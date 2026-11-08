@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { readJsonFile, readTextFile, walkFiles } from '../support/fs.ts';
 import { isRecord } from '../support/guards.ts';
-import { readManifest } from '../siyuan/manifest.ts';
+import { declaredAssets, readManifest } from '../siyuan/manifest.ts';
 import { kindSpec } from '../siyuan/kinds.ts';
 import type { Kind } from '../siyuan/kinds.ts';
 import { manifestIssueMessage, pluginManifestShape, themeManifestShape } from './manifest-schema.ts';
@@ -21,21 +21,6 @@ export interface VerifyIssue {
 export interface VerifyResult {
   ok: boolean;
   issues: VerifyIssue[];
-}
-
-/** 清单里引用外部文件名的字段（readme 可能是 i18n 对象）。 */
-function declaredAssets(manifest: Record<string, unknown>): string[] {
-  const names = new Set<string>();
-  const readme: unknown = manifest['readme'];
-  if (typeof readme === 'string') names.add(readme);
-  else if (isRecord(readme)) {
-    for (const value of Object.values(readme)) if (typeof value === 'string') names.add(value);
-  }
-  for (const key of ['icon', 'preview']) {
-    const value: unknown = manifest[key];
-    if (typeof value === 'string') names.add(value);
-  }
-  return [...names];
 }
 
 /** 去掉 CSS 注释：watch 产物不压缩，注释里常写着「别写 rgb(var(--b3-*))」。 */
@@ -54,7 +39,10 @@ function findDoubleWrappedColors(css: string): string[] {
 }
 
 /** 校验一个目标的清单与产物；返回问题列表，空表示通过。 */
-export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDir: string }): VerifyResult {
+export function verifyTarget(
+  kind: Kind,
+  { root, publicDir, outDir }: { root: string; publicDir: string; outDir: string }
+): VerifyResult {
   const spec = kindSpec(kind);
   const issues: VerifyIssue[] = [];
   // 只校验本次构建的产物目录。不做「产物目录不存在就改扫项目根」的兜底：
@@ -69,14 +57,14 @@ export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDi
     return path ? readTextFile(path) : null;
   };
 
-  const manifest = readManifest(root, spec.manifestName, [absOutDir])?.data ?? null;
+  const manifest = readManifest(publicDir, spec.manifestName, [absOutDir])?.data ?? null;
   const packageJsonRaw = readJsonFile(join(root, 'package.json'));
   const packageJson = isRecord(packageJsonRaw) ? packageJsonRaw : null;
 
   // ---- 通用：清单存在与形状 ----
   if (!manifest) {
     issues.push({
-      message: `读不到清单：${spec.manifestName}（应在 public/ 下，或已在产物目录里）`,
+      message: `读不到清单：${spec.manifestName}（应在 public 目录下，或已在产物目录里）`,
       hint: '思源按清单识别主题/插件，缺了它不会出现在列表里。',
     });
   } else {
@@ -114,12 +102,12 @@ export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDi
   if (manifest && existsSync(absOutDir)) {
     for (const name of declaredAssets(manifest)) {
       if (files.includes(name)) continue;
-      const inPublic = existsSync(join(root, 'public', name));
+      const inPublic = publicDir !== '' && existsSync(join(publicDir, name));
       issues.push({
         message: `清单声明的 ${name} 不在产物里`,
         hint: inPublic
-          ? `它在 public/ 下，但没被复制进 ${absOutDir}；确认 publicDir 配置。`
-          : `把 ${name} 放进 public/，它会随构建复制到产物根。`,
+          ? `它在 public 目录下，但没被复制进 ${absOutDir}；确认 publicDir 配置。`
+          : `把 ${name} 放进 public 目录，它会随构建复制到产物根。`,
       });
     }
   }

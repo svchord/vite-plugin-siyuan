@@ -28,7 +28,7 @@ describe('verifyTarget 的扫描范围', () => {
   it('产物目录不存在时只报「目录不存在」，不把 node_modules 当产物', () => {
     const project = projectWithNodeModules();
     try {
-      const result = verifyTarget('theme', { root: project.dir, outDir: './dev' });
+      const result = verifyTarget('theme', { root: project.dir, publicDir: join(project.dir, 'public'), outDir: './dev' });
       const messages = result.issues.map((issue) => issue.message);
 
       // 只该报产物目录不存在
@@ -50,7 +50,7 @@ describe('verifyTarget 的扫描范围', () => {
       // 产物目录里放一个 js：这才应该被报出来
       writeFileSync(join(project.dir, 'dev', 'extra.js'), 'var a = 1;');
 
-      const result = verifyTarget('theme', { root: project.dir, outDir: './dev' });
+      const result = verifyTarget('theme', { root: project.dir, publicDir: join(project.dir, 'public'), outDir: './dev' });
       const messages = result.issues.map((issue) => issue.message);
 
       expect(messages.some((message) => message.includes('主题产物里出现 JavaScript'))).toBe(true);

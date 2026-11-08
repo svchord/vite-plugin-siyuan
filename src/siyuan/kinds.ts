@@ -56,25 +56,34 @@ export function kindSpec(kind: Kind): KindSpec {
 const KIND_NAMES: Kind[] = ['theme', 'plugin'];
 
 /**
- * 从项目目录推断类型：看 `public/` 下存在哪份清单。
+ * 从项目目录推断类型：看 publicDir 下存在哪份清单。
  * 同时存在多种时必须让人指定——装错类型的产物名会静默加载不到。
  */
-export function detectKind(root: string): Kind {
+export function detectKind(publicDir: string): Kind {
+  // publicDir 关掉时清单无处安放：思源要求清单在产物根，而没有 publicDir 就没有
+  // 「原样复制到产物根」的机制。这里直接说清楚，不要让用户去猜「产物缺少」。
+  if (!publicDir) {
+    throw new UserError(
+      'publicDir 已关闭，清单（theme.json / plugin.json）无处安放。\n' +
+        '  思源要求清单出现在产物根，而 publicDir 是 Vite 唯一能原样复制到产物根的机制。\n' +
+        '  请移除 publicDir: false，或改成指向存放清单的目录。'
+    );
+  }
   const matches = KIND_NAMES.filter((kind) =>
-    manifestCandidates(root, SPECS[kind].manifestName).some((file) => existsSync(file))
+    manifestCandidates(publicDir, SPECS[kind].manifestName).some((file) => existsSync(file))
   );
   const [only] = matches;
   if (matches.length === 1 && only !== undefined) return only;
   throw new UserError(
     matches.length === 0
-      ? `在 ${root}/public 下找不到 theme.json / plugin.json；请把清单放进 public/，或用 kind 选项显式指定类型`
+      ? `在 ${publicDir} 下找不到 theme.json / plugin.json；请把清单放进该目录，或用 kind 选项显式指定类型`
       : `同时匹配到多种类型：${matches.join('、')}；请用 kind 选项显式指定`
   );
 }
 
 /** 读被测对象的名字；读不到抛可读错误，不猜默认值。 */
-export function readName(root: string, kind: Kind): string {
-  for (const file of manifestCandidates(root, SPECS[kind].manifestName)) {
+export function readName(publicDir: string, kind: Kind): string {
+  for (const file of manifestCandidates(publicDir, SPECS[kind].manifestName)) {
     const data = readJsonFile(file);
     if (isRecord(data)) {
       const name: unknown = data['name'];

@@ -73,7 +73,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
   /** 建会话：找端口 → 解析安装目录 → 链接 → 激活。失败抛可读错误。 */
   async function start(): Promise<Ready> {
     const current = facts;
-    const name = readName(current.root, kind);
+    const name = readName(current.publicDir, kind);
     const port = await findKernelPort();
     const installPath = await resolveInstallDir({
       kind,
@@ -180,7 +180,11 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
     onFinished(): void {
       const current = facts;
       buildCount += 1;
-      const result = verifyTarget(kind, { root: current.root, outDir: current.outDir });
+      const result = verifyTarget(kind, {
+        root: current.root,
+        publicDir: current.publicDir,
+        outDir: current.outDir,
+      });
       if (!result.ok) {
         const text = formatIssues(result.issues);
         if (current.watch) {

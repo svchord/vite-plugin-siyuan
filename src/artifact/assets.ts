@@ -20,10 +20,11 @@ import { dirname, join, resolve } from 'node:path';
 import { readJsonFile, walkFiles } from '../support/fs.ts';
 import { isRecord } from '../support/guards.ts';
 import type { Logger } from '../support/log.ts';
+import { declaredAssets } from '../siyuan/manifest.ts';
 
 const README_PATTERN = /^README.*\.md$/;
 
-/** 把 `public/**` 逐个交给构建器登记监听。 */
+/** 把 publicDir 下的文件逐个交给构建器登记监听。 */
 export function watchPublicFiles(publicDir: string, registerWatchFile: (file: string) => void, log: Logger): void {
   if (!publicDir || !existsSync(publicDir)) {
     log(`publicDir 不存在，跳过监听：${publicDir}`, 'warn');
@@ -32,27 +33,13 @@ export function watchPublicFiles(publicDir: string, registerWatchFile: (file: st
   for (const file of walkFiles(publicDir)) registerWatchFile(file.path);
 }
 
-/** 从清单的 readme 字段收集 README 文件名（string 或 i18n 对象）。 */
-function declaredReadmes(manifestPath: string, log: Logger): string[] | null {
-  const parsed = readJsonFile(manifestPath);
-  if (!isRecord(parsed)) {
-    log(`读不到或无法解析清单 ${manifestPath}；README 按 README*.md 兜底`, 'warn');
-    return null;
-  }
-  const files = new Set<string>();
-  const readme: unknown = parsed['readme'];
-  if (typeof readme === 'string') files.add(readme);
-  else if (isRecord(readme)) {
-    for (const value of Object.values(readme)) if (typeof value === 'string') files.add(value);
-  }
-  return files.size ? [...files] : null;
-}
-
 /**
  * 把 README 从项目根搬进产物目录（GitHub 只认根目录，思源要求产物根）。
  *
  * 清单声明的 README 优先；没声明时按 `README*.md` 兜底。
- * 若同名文件已经在 `public/` 下，说明用户选了 public 布局，跳过不覆盖。
+ *
+ * **publicDir 优先**：若同名文件已经在 publicDir 下，Vite 已经把它复制进产物，
+ * 这里直接跳过——否则项目根那份会静默覆盖用户放在 publicDir 的版本。
  *
  * watch 下复制失败只报错继续（一次文件锁不该停掉开发服务器）；
  * 生产构建必须失败——否则 package.zip 会缺 README。
@@ -75,11 +62,13 @@ export function copyReadmes({
   const absoluteOutDir = resolve(root, outDir);
   mkdirSync(absoluteOutDir, { recursive: true });
 
-  const manifestPath = join(root, 'public', manifestName);
-  const declared = declaredReadmes(manifestPath, log);
+  const manifestPath = publicDir ? join(publicDir, manifestName) : join(root, 'public', manifestName);
+  const parsed = readJsonFile(manifestPath);
+  const declared = isRecord(parsed) ? declaredAssets(parsed, ['readme']) : null;
+  if (!isRecord(parsed)) log(`读不到或无法解析清单 ${manifestPath}；README 按 README*.md 兜底`, 'warn');
 
   const names: string[] = [];
-  if (declared) {
+  if (declared?.length) {
     names.push(...declared);
   } else {
     log(`清单 ${manifestPath} 没声明 readme，按 README*.md 兜底搬运`, 'warn');
@@ -92,11 +81,11 @@ export function copyReadmes({
 
   const failures: string[] = [];
   for (const name of names) {
+    // publicDir 优先：Vite 已复制过，不再覆盖。
+    if (publicDir && existsSync(join(publicDir, name))) continue;
     const source = resolve(root, name);
     if (!existsSync(source)) {
-      // 用户把 README 放进了 public/，Vite 已经复制过，不覆盖。
-      if (publicDir && existsSync(join(publicDir, name))) continue;
-      failures.push(`${name}：项目根与 public/ 下都不存在`);
+      failures.push(`${name}：项目根与 public 目录下都不存在`);
       continue;
     }
     try {

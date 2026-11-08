@@ -22,6 +22,7 @@ import type { Plugin, ResolvedConfig } from 'vite';
 import { applyBuildConfig } from './config.ts';
 import { detectKind } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
+import { resolvePublicDir } from './siyuan/manifest.ts';
 import { createTaggedLogger } from './output/log.ts';
 import { createBuildSession } from './session.ts';
 import type { BuildSession } from './session.ts';
@@ -60,7 +61,9 @@ export default function siyuan(options: SiYuanOptions): Plugin {
       // entry 必填意味着用户确实在建思源产物，所以识别不到类型是真错误，
       // 不能像以前那样 warn 后跳过——那会让构建继续跑，最后崩在 Vite 的
       // "Cannot resolve entry module index.html" 上，完全指错方向。
-      kind ??= detectKind(root);
+      // publicDir 在这里还没解析（configResolved 才给），先按用户配置算一遍。
+      const publicDir = resolvePublicDir(root, userConfig.publicDir);
+      kind ??= detectKind(publicDir);
       const watch = Boolean(userConfig.build?.watch);
       return applyBuildConfig(userConfig, { kind, watch, entry, outDir: options.outDir ?? null });
     },
