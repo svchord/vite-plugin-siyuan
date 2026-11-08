@@ -43,7 +43,7 @@ pnpm vite build --watch
 ### watch（`vite build --watch`）
 
 1. **注入构建配置**：主题产出 `theme.css`；插件在给了 `entry` 时走 `lib` CJS 单文件产出 `index.js`。`base: './'` 保证宿主下资源不 404。用 `mergeConfig` 合并，**用户已写的值优先**。
-2. **链接产物**：把 `dev/` 链接到 `<workspace>/data/themes|plugins/<name>`。插件目录必须是真 symlink（思源 Go 运行时按 `ModeSymlink` 判定），主题可用 junction 兜底。
+2. **链接产物**：把 `dev/` 链接到 `{workspace}/data/themes|plugins/{name}`。插件目录必须是真 symlink（思源 Go 运行时按 `ModeSymlink` 判定），主题可用 junction 兜底。
 3. **激活**：主题调 `setAppearance` 选中它；插件调 `setPetalEnabled` 启用。
 4. **热重载**：产物变化后合并 250ms 广播 `reloadUI`，思源整页刷新。
 
@@ -74,8 +74,8 @@ watch 模式首次就绪后还会打印桌面端 / 移动端两个稳定预览�
 | 变量 | 说明 |
 |---|---|
 | `SIYUAN_PORT` | kernel 端口；缺省用 kernel 进程 PID 匹配 `port.json`，再探测记录端口与 6806–6809 |
-| `SIYUAN_THEME_DIR` | 主题安装父目录（`<workspace>/data/themes`），实际装到 `<它>/<name>` |
-| `SIYUAN_PLUGIN_DIR` | 插件安装父目录（`<workspace>/data/plugins`），同上 |
+| `SIYUAN_THEME_DIR` | 主题安装父目录（`{workspace}/data/themes`），实际装到 `{该目录}/{name}` |
+| `SIYUAN_PLUGIN_DIR` | 插件安装父目录（`{workspace}/data/plugins`），同上 |
 | `SIYUAN_TOKEN` | 开了 API token 时使用 |
 | `SIYUAN_NO_ELEVATION=1` | 不弹 UAC 提权（CI 环境自动不弹） |
 | `SIYUAN_DEBUG=1` | 输出 debug 级日志 |
