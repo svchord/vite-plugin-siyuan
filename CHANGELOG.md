@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/svchord/vite-plugin-siyuan/compare/v0.2.0...v0.3.0) (2026-11-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* 清单必须放在 public/ 下，项目根布局不再支持。
+
+### Features
+
+* 只有 README 从项目根搬，其余一律 public/ ([1e849bc](https://github.com/svchord/vite-plugin-siyuan/commit/1e849bc358d70bb02064cc4ce6d90586c370c4a8))
+* 清单只从 public/ 读 ([8315cac](https://github.com/svchord/vite-plugin-siyuan/commit/8315caccf8c0373557b7544d7a58d6212c11d635))
+
+
+### Bug Fixes
+
+* 按实际 publicDir 找清单，README 以 public 优先 ([349b6bf](https://github.com/svchord/vite-plugin-siyuan/commit/349b6bffa3ff72f82bf4e7c7f140365ab9943709))
+
 ## [0.2.0](https://github.com/svchord/vite-plugin-siyuan/compare/v0.1.0...v0.2.0) (2026-11-08)
 
 
