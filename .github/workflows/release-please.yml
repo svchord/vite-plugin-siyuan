@@ -48,8 +48,8 @@ jobs:
       # 发布前再跑一遍完整校验，避免把红着的代码发出去
       - run: pnpm run check
         if: ${{ steps.release.outputs.release_created }}
-      - run: pnpm run build
-        if: ${{ steps.release.outputs.release_created }}
+      # 这里不用再显式 build：package.json 的 prepack 会在 pack 前执行
+      # `pnpm run build`，重复一次只是浪费时间。
       # 只 stage，不直接发布：版本进入 npm 的暂存区，需要维护者在
       # npmjs.com 用安全密钥（WebAuthn）批准后才真正上线。
       # 这样即使 CI 被攻破、或红色 Release PR 被误合并，包也不会自动发出。
