@@ -1,0 +1,60 @@
+{
+  "name": "vite-plugin-siyuan",
+  "version": "0.1.0",
+  "description": "Vite plugin for SiYuan theme/plugin development: config injection, link to workspace, hot reload, verify and package",
+  "keywords": [
+    "siyuan",
+    "siyuan-theme",
+    "siyuan-plugin",
+    "vite-plugin",
+    "hot-reload"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "node --input-type=module -e \"import fs from 'node:fs'; fs.rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check": "pnpm run type-check && pnpm run test"
+  },
+  "dependencies": {
+    "consola": "^3.4.2",
+    "fflate": "^0.8.3",
+    "ps-list": "^9.0.0",
+    "semver": "^7.8.6",
+    "zod": "^4.6.7"
+  },
+  "peerDependencies": {
+    "vite": ">=6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/semver": "^7.8.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svchord/vite-plugin-siyuan.git"
+  },
+  "author": "svchord",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
