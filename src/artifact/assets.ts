@@ -66,8 +66,8 @@ export function copyMetadata({
   const absoluteOutDir = resolve(root, outDir);
   mkdirSync(absoluteOutDir, { recursive: true });
 
-  const candidates = [join(root, 'public', manifestName), join(root, manifestName)];
-  const manifestPath = candidates.find((file) => existsSync(file)) ?? candidates[0]!;
+  // 清单只从 public/ 读（Vite 会把它原样复制到产物根），项目根那份不认。
+  const manifestPath = join(root, 'public', manifestName);
   const declared = declaredFiles(manifestPath, log);
 
   const names: string[] = [];

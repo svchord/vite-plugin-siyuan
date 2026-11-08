@@ -57,13 +57,10 @@ export default function siyuan(options: SiYuanOptions): Plugin {
       if (!existsSync(entry)) {
         throw new UserError(`entry 指向的文件不存在：${entry}（选项值：${options.entry}）`);
       }
-      try {
-        kind ??= detectKind(root);
-      } catch (cause) {
-        // 没有清单就不知道产物该叫什么；交给项目自己配，不在这里报错。
-        log(`跳过构建配置注入：${describeError(cause)}`, 'warn');
-        return undefined;
-      }
+      // entry 必填意味着用户确实在建思源产物，所以识别不到类型是真错误，
+      // 不能像以前那样 warn 后跳过——那会让构建继续跑，最后崩在 Vite 的
+      // "Cannot resolve entry module index.html" 上，完全指错方向。
+      kind ??= detectKind(root);
       const watch = Boolean(userConfig.build?.watch);
       return applyBuildConfig(userConfig, { kind, watch, entry, outDir: options.outDir ?? null });
     },

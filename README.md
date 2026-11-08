@@ -29,12 +29,37 @@ pnpm vite build --watch
 
 `vite dev` 不适用：思源从磁盘读产物，而 dev server 只在内存里编译。插件的 `apply` 固定为 `'build'`。
 
+## 项目结构
+
+清单**必须放在 `public/` 下**：
+
+```
+你的项目/
+├── public/
+│   └── theme.json        ← 主题；插件则是 plugin.json
+├── src/
+│   └── main.css          ← entry 指向这里
+└── vite.config.ts
+```
+
+原因：`theme.json` / `plugin.json` 必须是**产物根**的文件（思源按固定位置加载），
+而 `public/` 是 Vite 唯一「原样复制到产物根」的机制——放这里，dev 和 build 都自动生效，
+改清单也会触发重建。
+
+**不支持**把清单放在项目根。官方 [theme-sample](https://github.com/siyuan-note/theme-sample)
+和 [plugin-sample](https://github.com/siyuan-note/plugin-sample) 是根目录布局，但它们是
+无构建步骤或 webpack 项目，不是 Vite 项目。若强行放根目录，插件会在 `config` 阶段直接报错：
+
+```
+在 <root>/public 下找不到 theme.json / plugin.json；请把清单放进 public/，或用 kind 选项显式指定类型
+```
+
 ## 选项
 
 | 选项 | 说明 |
 |---|---|
 | `entry` | **必填**。构建入口，相对项目根。主题指向 CSS，插件指向 TS/JS |
-| `kind` | `'theme'` / `'plugin'`；缺省时在 `public/`、项目根依次查找 `theme.json` / `plugin.json` 推断 |
+| `kind` | `'theme'` / `'plugin'`；缺省时按 `public/` 下存在的清单推断 |
 | `outDir` | 产物目录；缺省 `./dev`（watch）/ `./dist`（生产） |
 
 > `entry` 必填是因为产物名是固定契约（主题 `theme.css`、插件 `index.js`）。

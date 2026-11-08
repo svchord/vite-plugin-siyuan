@@ -56,7 +56,7 @@ export function kindSpec(kind: Kind): KindSpec {
 const KIND_NAMES: Kind[] = ['theme', 'plugin'];
 
 /**
- * 从项目目录推断类型：看 public/ 或项目根存在哪份清单。
+ * 从项目目录推断类型：看 `public/` 下存在哪份清单。
  * 同时存在多种时必须让人指定——装错类型的产物名会静默加载不到。
  */
 export function detectKind(root: string): Kind {
@@ -67,7 +67,7 @@ export function detectKind(root: string): Kind {
   if (matches.length === 1 && only !== undefined) return only;
   throw new UserError(
     matches.length === 0
-      ? `在 ${root} 的 public/ 或项目根下找不到 theme.json / plugin.json；请用 kind 选项显式指定类型`
+      ? `在 ${root}/public 下找不到 theme.json / plugin.json；请把清单放进 public/，或用 kind 选项显式指定类型`
       : `同时匹配到多种类型：${matches.join('、')}；请用 kind 选项显式指定`
   );
 }
