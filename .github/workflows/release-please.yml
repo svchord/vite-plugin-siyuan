@@ -50,13 +50,16 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
       - run: pnpm run build
         if: ${{ steps.release.outputs.release_created }}
-      # 纯 OIDC 发布，不需要任何 npm token。
-      # 想改成「CI 只 stage、人工在 npmjs.com 用 2FA 批准」的话：
-      #   1. 把下面一行换成 pnpm stage publish --access public --no-git-checks
-      #   2. npm trusted publisher 的权限改成只勾 "npm stage publish"
-      - run: pnpm publish --access public --no-git-checks
+      # 只 stage，不直接发布：版本进入 npm 的暂存区，需要维护者在
+      # npmjs.com 用安全密钥（WebAuthn）批准后才真正上线。
+      # 这样即使 CI 被攻破、或红色 Release PR 被误合并，包也不会自动发出。
+      #
+      # 前提：npm 上该包的 trusted publisher 只勾 "npm stage publish"，
+      # 不要勾 "npm publish"。少了这个前提，CI 会 403。
+      - run: pnpm stage publish --access public --no-git-checks
         if: ${{ steps.release.outputs.release_created }}
         # 若遇到 "OIDC token exchange ... 404"（npm/cli#9969，新建仓库的
         # immutable subject claim），再解开下面两行，用 granular token 兜底。
+        # 注意：兜底 token 也必须允许 stage（不带 bypass 2FA 的 GAT 即可）。
         # env:
         #   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
