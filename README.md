@@ -32,7 +32,7 @@ pnpm vite build --watch
 
 | 选项 | 说明 |
 |---|---|
-| `kind` | `'theme'` / `'plugin'`；缺省时在 `public/`、`dist/`、项目根依次查找 `theme.json` / `plugin.json` 推断 |
+| `kind` | `'theme'` / `'plugin'`；缺省时在 `public/`、项目根依次查找 `theme.json` / `plugin.json` 推断 |
 | `outDir` | 产物目录；缺省 `./dev`（watch）/ `./dist`（生产） |
 | `entry` | 构建入口，相对项目根；缺省保留项目自己的 `input` / `lib` |
 

@@ -1,8 +1,9 @@
 /**
  * 清单文件的读取。
  *
- * 清单可能出现在三处：`public/`（源码）、`dist/`（构建产物）、项目根
- * （解包后的 `package.zip` 就是这种布局）。
+ * 清单可能出现在两处：`public/`（源码）或项目根（官方 sample 的布局）。
+ * 构建产物里的清单由调用方通过 `extraDirs` 显式传入，不作为默认候选——
+ * 否则上一次构建留下的 `dist/theme.json` 会盖住源码里的新清单。
  */
 import { join } from 'node:path';
 import { readJsonFile } from '../support/fs.ts';
@@ -16,7 +17,7 @@ export interface ManifestFile {
 
 /** 清单候选路径，按优先级排列。 */
 export function manifestCandidates(root: string, manifest: string, extraDirs: readonly string[] = []): string[] {
-  const dirs = [join(root, 'public'), join(root, 'dist'), root, ...extraDirs];
+  const dirs = [join(root, 'public'), root, ...extraDirs];
   return dirs.map((dir) => join(dir, manifest));
 }
 

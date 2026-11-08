@@ -61,7 +61,7 @@ export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDi
   // ---- 通用：清单存在与形状 ----
   if (!manifest) {
     issues.push({
-      message: `读不到清单：${spec.manifestName}（找过 public/、dist/、项目根）`,
+      message: `读不到清单：${spec.manifestName}（找过 public/、项目根与产物目录）`,
       hint: '思源按清单识别主题/插件，缺了它不会出现在列表里。',
     });
   } else {
