@@ -18,7 +18,8 @@ import { defineConfig } from 'vite';
 import siyuan from 'vite-plugin-siyuan';
 
 export default defineConfig({
-  plugins: [siyuan()],
+  // entry 必填：主题指向 CSS，插件指向 TS/JS
+  plugins: [siyuan({ entry: 'src/main.css' })],
 });
 ```
 
@@ -32,9 +33,12 @@ pnpm vite build --watch
 
 | 选项 | 说明 |
 |---|---|
+| `entry` | **必填**。构建入口，相对项目根。主题指向 CSS，插件指向 TS/JS |
 | `kind` | `'theme'` / `'plugin'`；缺省时在 `public/`、项目根依次查找 `theme.json` / `plugin.json` 推断 |
 | `outDir` | 产物目录；缺省 `./dev`（watch）/ `./dist`（生产） |
-| `entry` | 构建入口，相对项目根；缺省保留项目自己的 `input` / `lib` |
+
+> `entry` 必填是因为产物名是固定契约（主题 `theme.css`、插件 `index.js`）。
+> 入口猜错不会报错，只会静默产出思源加载不到的东西——所以宁可要求显式指定。
 
 ## 做什么
 
@@ -42,7 +46,7 @@ pnpm vite build --watch
 
 ### watch（`vite build --watch`）
 
-1. **注入构建配置**：主题产出 `theme.css`；插件在给了 `entry` 时走 `lib` CJS 单文件产出 `index.js`。`base: './'` 保证宿主下资源不 404。用 `mergeConfig` 合并，**用户已写的值优先**。
+1. **注入构建配置**：主题产出 `theme.css`；插件走 `lib` CJS 单文件产出 `index.js`。`base: './'` 保证宿主下资源不 404。用 `mergeConfig` 合并，**用户已写的值优先**。
 2. **链接产物**：把 `dev/` 链接到 `{workspace}/data/themes|plugins/{name}`。插件目录必须是真 symlink（思源 Go 运行时按 `ModeSymlink` 判定），主题可用 junction 兜底。
 3. **激活**：主题调 `setAppearance` 选中它；插件调 `setPetalEnabled` 启用。
 4. **热重载**：产物变化后合并 250ms 广播 `reloadUI`，思源整页刷新。

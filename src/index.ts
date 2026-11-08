@@ -16,6 +16,7 @@
  *   closeBundle    校验 + 打包 + 汇报 + 构建完成日志
  *   closeWatcher   释放定时器
  */
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin, ResolvedConfig } from 'vite';
 import { applyBuildConfig } from './config.ts';
@@ -29,15 +30,19 @@ import { describeError, UserError } from './support/errors.ts';
 const NAME = 'vite-plugin-siyuan';
 
 export interface SiYuanOptions {
+  /**
+   * 构建入口，相对项目根。必填：主题要产出固定名 `theme.css`、插件要产出
+   * CJS 单文件 `index.js`，产物名是思源加载机制决定的契约，入口不能靠猜——
+   * 猜错不会报错，只会静默产出思源加载不到的东西。
+   */
+  entry: string;
   /** 被测类型（theme / plugin）；缺省从清单推断。 */
   kind?: Kind | null;
   /** 产物目录；缺省 `./dev`（watch）/ `./dist`（生产）。 */
   outDir?: string | null;
-  /** 构建入口，相对项目根；缺省保留项目自己写的 input/lib。 */
-  entry?: string | null;
 }
 
-export default function siyuan(options: SiYuanOptions = {}): Plugin {
+export default function siyuan(options: SiYuanOptions): Plugin {
   const log = createTaggedLogger(NAME);
   let session: BuildSession | null = null;
   let kind: Kind | null = options.kind ?? null;
@@ -48,6 +53,10 @@ export default function siyuan(options: SiYuanOptions = {}): Plugin {
 
     config(userConfig) {
       const root = typeof userConfig.root === 'string' ? resolve(userConfig.root) : process.cwd();
+      const entry = resolve(root, options.entry);
+      if (!existsSync(entry)) {
+        throw new UserError(`entry 指向的文件不存在：${entry}（选项值：${options.entry}）`);
+      }
       try {
         kind ??= detectKind(root);
       } catch (cause) {
@@ -56,7 +65,6 @@ export default function siyuan(options: SiYuanOptions = {}): Plugin {
         return undefined;
       }
       const watch = Boolean(userConfig.build?.watch);
-      const entry = options.entry ? resolve(root, options.entry) : null;
       return applyBuildConfig(userConfig, { kind, watch, entry, outDir: options.outDir ?? null });
     },
 

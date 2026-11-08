@@ -24,7 +24,7 @@ describe('buildSpecFor', () => {
   });
 
   it('outDir 选项覆盖默认值', () => {
-    const spec = buildSpecFor({ kind: 'theme', watch: true, entry: null, outDir: './custom' });
+    const spec = buildSpecFor({ kind: 'theme', watch: true, entry: '/p/src/main.css', outDir: './custom' });
     expect(spec.build?.outDir).toBe('./custom');
   });
 });

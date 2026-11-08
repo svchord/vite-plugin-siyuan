@@ -17,8 +17,8 @@ import type { Kind } from './siyuan/kinds.ts';
 export interface BuildSpecInput {
   kind: Kind;
   watch: boolean;
-  /** 入口文件绝对路径；不给则保留项目自己的 input/lib。 */
-  entry: string | null;
+  /** 入口文件绝对路径。必填：产物名是固定契约，入口不能靠猜。 */
+  entry: string;
   /** 插件选项里显式给的产物目录。 */
   outDir: string | null;
 }
@@ -50,9 +50,7 @@ function optionsKey(userConfig: UserConfig): 'rollupOptions' | 'rolldownOptions'
 export function buildSpecFor(input: BuildSpecInput): UserConfig {
   const spec = kindSpec(input.kind);
   const outDir = input.outDir ?? (input.watch ? './dev' : './dist');
-  const options: Record<string, unknown> = {};
-
-  if (input.entry) options.input = input.entry;
+  const options: Record<string, unknown> = { input: input.entry };
   if (input.kind === 'plugin') {
     options.external = ['siyuan', 'process'];
     options.output = {
@@ -70,7 +68,7 @@ export function buildSpecFor(input: BuildSpecInput): UserConfig {
     // watch 不压缩（便于直接看落盘产物），生产用默认压缩器。
     minify: !input.watch,
   };
-  if (input.entry && input.kind === 'plugin') {
+  if (input.kind === 'plugin') {
     // 插件入口是 `export default class ...`，必须走 lib：lib cjs 产出
     // `module.exports = 类`；普通 input 只得到 `exports.default`，思源报
     // "plugin xxx has no export"。
