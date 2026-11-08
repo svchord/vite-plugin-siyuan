@@ -42,11 +42,9 @@ function findDoubleWrappedColors(css: string): string[] {
 export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDir: string }): VerifyResult {
   const spec = kindSpec(kind);
   const issues: VerifyIssue[] = [];
-  const declaredOutDir = isAbsolute(outDir) ? outDir : join(root, outDir);
-
   // 只校验本次构建的产物目录。不做「产物目录不存在就改扫项目根」的兜底：
   // 插件永远在真实构建之后校验，那种兜底只会把 node_modules 当成产物扫进来。
-  const absOutDir = declaredOutDir;
+  const absOutDir = isAbsolute(outDir) ? outDir : join(root, outDir);
 
   const walked = walkFiles(absOutDir);
   const files = walked.map((file) => file.name);

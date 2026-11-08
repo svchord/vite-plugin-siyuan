@@ -27,6 +27,7 @@
   "scripts": {
     "clean": "node --input-type=module -e \"import fs from 'node:fs'; fs.rmSync('dist',{recursive:true,force:true})\"",
     "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "check": "pnpm run type-check && pnpm run test"
@@ -42,7 +43,7 @@
     "vite": ">=6"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6",
+    "@types/node": "^22.20.5",
     "@types/semver": "^7.8.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",

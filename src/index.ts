@@ -65,7 +65,6 @@ export default function siyuan(options: SiYuanOptions = {}): Plugin {
       const outDir = resolvedConfig.build.outDir;
       const publicDir = resolvedConfig.publicDir;
       const watch = resolvedConfig.command === 'build' && Boolean(resolvedConfig.build.watch);
-      kind ??= options.kind ?? null;
       if (!kind) {
         log('识别不到被测类型，跳过链接与校验', 'warn');
         return;

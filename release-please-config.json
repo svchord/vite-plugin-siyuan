@@ -3,8 +3,6 @@
   "release-type": "node",
   "packages": {
     ".": {
-      "package-name": "vite-plugin-siyuan",
-      "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "bump-minor-pre-major": true
     }

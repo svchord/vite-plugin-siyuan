@@ -35,7 +35,7 @@ export async function buildProject(files: Record<string, string>): Promise<RealP
   for (const [rel, content] of Object.entries(files)) {
     const full = join(dir, rel);
     mkdirSync(dirname(full), { recursive: true });
-    writeFileSync(full, Buffer.from(content, 'latin1'));
+    writeFileSync(full, Buffer.from(content, 'utf8'));
   }
 
   return {
