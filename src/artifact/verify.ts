@@ -23,6 +23,21 @@ export interface VerifyResult {
   issues: VerifyIssue[];
 }
 
+/** 清单里引用外部文件名的字段（readme 可能是 i18n 对象）。 */
+function declaredAssets(manifest: Record<string, unknown>): string[] {
+  const names = new Set<string>();
+  const readme: unknown = manifest['readme'];
+  if (typeof readme === 'string') names.add(readme);
+  else if (isRecord(readme)) {
+    for (const value of Object.values(readme)) if (typeof value === 'string') names.add(value);
+  }
+  for (const key of ['icon', 'preview']) {
+    const value: unknown = manifest[key];
+    if (typeof value === 'string') names.add(value);
+  }
+  return [...names];
+}
+
 /** 去掉 CSS 注释：watch 产物不压缩，注释里常写着「别写 rgb(var(--b3-*))」。 */
 function stripCssComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -90,6 +105,22 @@ export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDi
       if (!files.includes(expected)) {
         issues.push({ message: `产物缺少 ${expected}`, hint: '思源按固定文件名加载，缺了不会报错、只是加载不到。' });
       }
+    }
+  }
+
+  // ---- 清单声明的资源必须真的在产物里 ----
+  // icon / preview / readme 由清单引用，思源集市按这些名字去找。它们只能通过
+  // public/ 进产物（README 额外支持项目根），放错位置不会报错、只是集市缺图。
+  if (manifest && existsSync(absOutDir)) {
+    for (const name of declaredAssets(manifest)) {
+      if (files.includes(name)) continue;
+      const inPublic = existsSync(join(root, 'public', name));
+      issues.push({
+        message: `清单声明的 ${name} 不在产物里`,
+        hint: inPublic
+          ? `它在 public/ 下，但没被复制进 ${absOutDir}；确认 publicDir 配置。`
+          : `把 ${name} 放进 public/，它会随构建复制到产物根。`,
+      });
     }
   }
 

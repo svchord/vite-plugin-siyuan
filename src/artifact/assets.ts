@@ -1,8 +1,18 @@
 /**
- * 思源产物契约：让 `public/` 的改动也触发重建，并搬运清单声明的元数据文件。
+ * 思源产物契约：让 `public/` 的改动也触发重建，并搬运唯一必须放项目根的文件。
+ *
+ * ## 文件放哪
+ *
+ * **只有 README 必须放项目根**：GitHub 只展示仓库根的 README，而思源集市要求
+ * 它出现在产物根。这一份由本模块搬进产物。
+ *
+ * 其他一切（`theme.json` / `plugin.json` / `icon` / `preview` / `i18n/` / 图片字体
+ * 等静态资源）都放 `public/`，由 Vite 的 `publicDir` 原样复制到产物根，本模块不介入。
+ *
+ * ## 为什么要监听 public/
  *
  * 主流构建器的 `publicDir` 都只在**启动时**复制进产物，之后不再监听它，
- * 而思源的清单恰恰在 `public/` 里——改个 `theme.json` 的 frontends 或版本号，
+ * 而思源的清单恰恰在 `public/` 里——改个 `theme.json` 的 modes 或版本号，
  * 不重启就永远不生效。所以要把 `public/**` 显式加进监听集合。
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -22,11 +32,11 @@ export function watchPublicFiles(publicDir: string, registerWatchFile: (file: st
   for (const file of walkFiles(publicDir)) registerWatchFile(file.path);
 }
 
-/** 从清单的 readme / icon / preview 收集要搬的文件名。 */
-function declaredFiles(manifestPath: string, log: Logger): string[] | null {
+/** 从清单的 readme 字段收集 README 文件名（string 或 i18n 对象）。 */
+function declaredReadmes(manifestPath: string, log: Logger): string[] | null {
   const parsed = readJsonFile(manifestPath);
   if (!isRecord(parsed)) {
-    log(`读不到或无法解析清单 ${manifestPath}；元数据按 README*.md 兜底`, 'warn');
+    log(`读不到或无法解析清单 ${manifestPath}；README 按 README*.md 兜底`, 'warn');
     return null;
   }
   const files = new Set<string>();
@@ -35,20 +45,19 @@ function declaredFiles(manifestPath: string, log: Logger): string[] | null {
   else if (isRecord(readme)) {
     for (const value of Object.values(readme)) if (typeof value === 'string') files.add(value);
   }
-  for (const key of ['icon', 'preview']) {
-    const value: unknown = parsed[key];
-    if (typeof value === 'string') files.add(value);
-  }
   return files.size ? [...files] : null;
 }
 
 /**
- * 把清单声明的元数据文件搬进产物目录；已由构建器搬过的（public/ 下）跳过。
+ * 把 README 从项目根搬进产物目录（GitHub 只认根目录，思源要求产物根）。
+ *
+ * 清单声明的 README 优先；没声明时按 `README*.md` 兜底。
+ * 若同名文件已经在 `public/` 下，说明用户选了 public 布局，跳过不覆盖。
  *
  * watch 下复制失败只报错继续（一次文件锁不该停掉开发服务器）；
- * 生产构建必须失败——否则 package.zip 会缺清单声明的 readme/icon/preview。
+ * 生产构建必须失败——否则 package.zip 会缺 README。
  */
-export function copyMetadata({
+export function copyReadmes({
   root,
   publicDir,
   outDir,
@@ -66,15 +75,14 @@ export function copyMetadata({
   const absoluteOutDir = resolve(root, outDir);
   mkdirSync(absoluteOutDir, { recursive: true });
 
-  // 清单只从 public/ 读（Vite 会把它原样复制到产物根），项目根那份不认。
   const manifestPath = join(root, 'public', manifestName);
-  const declared = declaredFiles(manifestPath, log);
+  const declared = declaredReadmes(manifestPath, log);
 
   const names: string[] = [];
   if (declared) {
     names.push(...declared);
   } else {
-    log(`清单 ${manifestPath} 没声明 readme/icon/preview，按 README*.md 兜底搬运`, 'warn');
+    log(`清单 ${manifestPath} 没声明 readme，按 README*.md 兜底搬运`, 'warn');
     names.push(
       ...readdirSync(root, { withFileTypes: true })
         .filter((entry) => entry.isFile() && README_PATTERN.test(entry.name))
@@ -86,6 +94,7 @@ export function copyMetadata({
   for (const name of names) {
     const source = resolve(root, name);
     if (!existsSync(source)) {
+      // 用户把 README 放进了 public/，Vite 已经复制过，不覆盖。
       if (publicDir && existsSync(join(publicDir, name))) continue;
       failures.push(`${name}：项目根与 public/ 下都不存在`);
       continue;
@@ -100,6 +109,6 @@ export function copyMetadata({
   }
   if (!failures.length) return;
   const detail = failures.join('；');
-  if (watch) log(`资产复制失败 ${detail}`, 'error');
-  else throw new Error(`资产复制失败：${detail}`);
+  if (watch) log(`README 复制失败 ${detail}`, 'error');
+  else throw new Error(`README 复制失败：${detail}`);
 }

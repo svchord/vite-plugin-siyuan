@@ -5,7 +5,7 @@
  */
 import { relative, resolve } from 'node:path';
 import { activate, reloadUI } from './siyuan/activate.ts';
-import { copyMetadata, watchPublicFiles } from './artifact/assets.ts';
+import { copyReadmes, watchPublicFiles } from './artifact/assets.ts';
 import { checkLinkedFiles, ensureLink } from './siyuan/link.ts';
 import { kindSpec, readName } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
@@ -147,7 +147,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
     async onWritten(files: string[]): Promise<void> {
       const current = facts;
       // 元数据搬运先做：校验时文件必须已经就位。
-      copyMetadata({
+      copyReadmes({
         root: current.root,
         publicDir: current.publicDir,
         outDir: relative(current.root, current.outDir) || '.',

@@ -31,23 +31,46 @@ pnpm vite build --watch
 
 ## 项目结构
 
-清单**必须放在 `public/` 下**：
+**除了 `README.md`，其余文件都放 `public/`。**
 
 ```
 你的项目/
+├── README.md             ← 唯一必须放项目根的（GitHub 只展示仓库根的 README）
 ├── public/
-│   └── theme.json        ← 主题；插件则是 plugin.json
+│   ├── theme.json        ← 主题；插件则是 plugin.json
+│   ├── icon.png
+│   ├── preview.png
+│   └── i18n/
+│       ├── en_US.json
+│       └── zh_CN.json
 ├── src/
 │   └── main.css          ← entry 指向这里
 └── vite.config.ts
 ```
 
-原因：`theme.json` / `plugin.json` 必须是**产物根**的文件（思源按固定位置加载），
+### 为什么
+
+| 文件 | 放哪 | 谁负责搬进产物 |
+|---|---|---|
+| `theme.json` / `plugin.json` | `public/` | Vite 的 `publicDir` |
+| `icon` / `preview` / `i18n/` / 图片字体 | `public/` | Vite 的 `publicDir` |
+| `README.md` | **项目根** | 插件搬（见下） |
+
+`theme.json` / `plugin.json` 等必须是**产物根**的文件（思源按固定位置加载），
 而 `public/` 是 Vite 唯一「原样复制到产物根」的机制——放这里，dev 和 build 都自动生效，
 改清单也会触发重建。
 
-**不支持**把清单放在项目根。官方 [theme-sample](https://github.com/siyuan-note/theme-sample)
-和 [plugin-sample](https://github.com/siyuan-note/plugin-sample) 是根目录布局，但它们是
+`README.md` 是唯一的例外：GitHub 只展示仓库根的 README，但思源集市要求它出现在产物根。
+插件会把它从项目根复制进产物（清单的 `readme` 字段可指定文件名，缺省按 `README*.md` 兜底）。
+如果你更想放 `public/README.md`，也支持——检测到已在 `public/` 下就不重复复制。
+
+> 清单里声明的 `icon` / `preview` 如果没出现在产物里，构建会**报错**并提示放进 `public/`。
+> 这类缺失思源不会报错，只会导致集市缺图。
+
+### 不支持根目录布局
+
+官方 [theme-sample](https://github.com/siyuan-note/theme-sample) 和
+[plugin-sample](https://github.com/siyuan-note/plugin-sample) 把清单放项目根，但它们是
 无构建步骤或 webpack 项目，不是 Vite 项目。若强行放根目录，插件会在 `config` 阶段直接报错：
 
 ```
