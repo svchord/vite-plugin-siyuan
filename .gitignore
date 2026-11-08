@@ -3,7 +3,5 @@ dist
 *.log
 package.zip
 dev
-.playwright-cli
-/shots
 .idea
 *.tsbuildinfo

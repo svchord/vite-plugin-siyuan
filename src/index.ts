@@ -72,7 +72,7 @@ export default function siyuan(options: SiYuanOptions = {}): Plugin {
       }
       session = createBuildSession(
         { root, outDir: resolve(root, outDir), publicDir, watch },
-        { kind, outDir: options.outDir ?? null, log, previewLogger: log }
+        { kind, log, previewLogger: log }
       );
       if (!watch) log('生产构建：不启动热重载会话，只校验产物并打包');
     },

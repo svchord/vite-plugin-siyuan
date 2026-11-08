@@ -10,6 +10,7 @@ import { UserError } from '../support/errors.ts';
 import { isRecord, isString } from '../support/guards.ts';
 import { TIMING } from '../support/timing.ts';
 import { callKernel, readWorkspacePaths } from './port.ts';
+import type { Kind } from './kinds.ts';
 
 /** 列工作区：先问内核，问不到再读文件；内核不可用不是错误。 */
 async function listWorkspaces(port: number | null): Promise<string[]> {
@@ -37,14 +38,12 @@ export async function resolveInstallDir({
   dirEnv,
   name,
   port,
-  workspace,
 }: {
-  kind: string;
+  kind: Kind;
   subdir: string;
   dirEnv: string;
   name: string;
   port: number | null;
-  workspace?: string | null;
 }): Promise<string> {
   const explicitDir = process.env[dirEnv]?.trim();
   if (explicitDir) {
@@ -57,18 +56,15 @@ export async function resolveInstallDir({
     return join(dir, name);
   }
 
-  let root = workspace ?? null;
-  if (!root) {
-    const workspaces = await listWorkspaces(port);
-    const [first] = workspaces;
-    if (workspaces.length > 1) {
-      throw new UserError(
-        `找到多个思源工作区：\n${workspaces.map((path) => `  - ${path}`).join('\n')}\n` +
-          `  无法判断该装到哪一个（当前类型：${kind}）。请设置 ${dirEnv} 直接指向 <workspace>/data/${subdir}，或在配置里显式指定 workspace。`
-      );
-    }
-    root = first ?? null;
+  const workspaces = await listWorkspaces(port);
+  const [first] = workspaces;
+  if (workspaces.length > 1) {
+    throw new UserError(
+      `找到多个思源工作区：\n${workspaces.map((path) => `  - ${path}`).join('\n')}\n` +
+        `  无法判断该装到哪一个（当前类型：${kind}）。请设置 ${dirEnv} 指向 <workspace>/data/${subdir}。`
+    );
   }
+  const root = first ?? null;
   if (!root) {
     throw new UserError(
       `找不到思源工作区：确认思源已启动，或设置 ${dirEnv} 为 <workspace>/data/${subdir}（当前类型：${kind}）`

@@ -32,10 +32,8 @@ export interface BuildFacts {
 }
 
 export interface SessionOptions {
-  /** 显式指定的类型；null 表示从清单推断。 */
+  /** 被测类型。 */
   kind: Kind;
-  /** 插件选项里的 outDir 原值，作为 config 阶段的回退。 */
-  outDir: string | null;
   log: Logger;
   /** 预览入口排版用的 logger（需要 tag 与 info 图标）。 */
   previewLogger: PreviewLogger;
@@ -72,16 +70,9 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
   let pendingFiles: string[] = [];
   let chain: Promise<void> = Promise.resolve();
 
-  function buildFactsWithOutDir(): BuildFacts {
-    return {
-      ...facts,
-      outDir: facts.outDir || resolve(facts.root, options.outDir ?? (facts.watch ? './dev' : './dist')),
-    };
-  }
-
   /** 建会话：找端口 → 解析安装目录 → 链接 → 激活。失败抛可读错误。 */
   async function start(): Promise<Ready> {
-    const current = buildFactsWithOutDir();
+    const current = facts;
     const name = readName(current.root, kind);
     const port = await findKernelPort();
     const installPath = await resolveInstallDir({
@@ -154,7 +145,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
 
     /** 产物写完。 */
     async onWritten(files: string[]): Promise<void> {
-      const current = buildFactsWithOutDir();
+      const current = facts;
       // 元数据搬运先做：校验时文件必须已经就位。
       copyMetadata({
         root: current.root,
@@ -187,7 +178,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
 
     /** 一轮结束：校验 + 打包。 */
     onFinished(): void {
-      const current = buildFactsWithOutDir();
+      const current = facts;
       buildCount += 1;
       const result = verifyTarget(kind, { root: current.root, outDir: current.outDir });
       if (!result.ok) {
@@ -208,7 +199,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
 
     /** 本轮最后：打印会话汇报与预览入口（只一次），再打构建完成日志。 */
     onEnd(): void {
-      const current = buildFactsWithOutDir();
+      const current = facts;
       if (current.watch && ready && !reported) {
         reported = true;
         log(`已链接到思源 ${ready.linkedPath}`, 'success');

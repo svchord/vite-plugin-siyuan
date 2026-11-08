@@ -2,10 +2,11 @@
  * 日志：consola 带 tag 前缀，保留级别图标与配色。
  *
  * 用 `compact: false` 让多行消息保持原样——预览入口那块靠它维持缩进。
- * `SYD_DEBUG=1` 时降到 debug 级别；用精确比较而不是 truthiness：
- * `SYD_DEBUG=0` 在 shell 里很常见，truthiness 会把它读成「开」。
+ * `SIYUAN_DEBUG=1`（旧名 `SYD_DEBUG`）时降到 debug 级别；用精确比较而不是
+ * truthiness：`=0` 在 shell 里很常见，truthiness 会把它读成「开」。
  */
 import { createConsola } from 'consola';
+import { envFlag } from '../support/env.ts';
 import type { LogLevel } from '../support/log.ts';
 
 /** 预览入口的排版日志：只需要 info 一个方法。 */
@@ -21,7 +22,7 @@ export interface TaggedLogger {
 
 export function createTaggedLogger(tag: string): TaggedLogger {
   const logger = createConsola({
-    level: process.env.SYD_DEBUG === '1' ? 5 : 3,
+    level: envFlag('SIYUAN_DEBUG', 'SYD_DEBUG') ? 5 : 3,
     formatOptions: { compact: false },
   }).withTag(tag);
 

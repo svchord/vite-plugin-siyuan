@@ -68,7 +68,3 @@ export async function buildProject(files: Record<string, string>): Promise<RealP
     },
   };
 }
-
-export function readBuilt(dir: string, rel: string): string {
-  return readFileSync(join(dir, rel), 'utf8');
-}

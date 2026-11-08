@@ -44,9 +44,8 @@ export function verifyTarget(kind: Kind, { root, outDir }: { root: string; outDi
   const issues: VerifyIssue[] = [];
   const declaredOutDir = isAbsolute(outDir) ? outDir : join(root, outDir);
 
-  // 只校验本次构建的产物目录。旧实现有一条「产物目录不存在 + 清单在项目根」
-  // 就当成解包后的 package.zip 去扫项目根的分支——那是给 `verify --dir` 用的；
-  // 插件永远在真实构建之后校验，这条分支只会把 node_modules 当成产物扫进来。
+  // 只校验本次构建的产物目录。不做「产物目录不存在就改扫项目根」的兜底：
+  // 插件永远在真实构建之后校验，那种兜底只会把 node_modules 当成产物扫进来。
   const absOutDir = declaredOutDir;
 
   const walked = walkFiles(absOutDir);

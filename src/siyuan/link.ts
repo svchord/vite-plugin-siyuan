@@ -12,6 +12,7 @@
 import { existsSync, lstatSync, readlinkSync, symlinkSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
+import { envFlag } from '../support/env.ts';
 import { errorCode } from '../support/errors.ts';
 import { samePath } from '../support/fs.ts';
 import { TIMING } from '../support/timing.ts';
@@ -75,7 +76,7 @@ function detectLinkType(targetPath: string): LinkType | null {
 /** 无人值守时不弹 UAC：弹窗没人点会阻塞 120s，比退化成 junction 更糟。 */
 function canPromptElevation(): boolean {
   if (process.platform !== 'win32') return false;
-  if (process.env.SYD_NO_ELEVATION === '1') return false;
+  if (envFlag('SIYUAN_NO_ELEVATION', 'SYD_NO_ELEVATION')) return false;
   if (process.env.CI) return false;
   return Boolean(process.stdout.isTTY);
 }
