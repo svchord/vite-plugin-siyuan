@@ -1,28 +1,23 @@
 /**
- * Vite 插件入口：把构建会话接到 Vite 生命周期上。
+ * Vite 插件入口。
  *
- * ## 为什么只挂 build
+ * 只支持 `vite build`（`apply: 'build'`）：思源从磁盘读产物，dev server 只在内存里
+ * 编译；插件 JS 还要求 CJS 单文件（思源用 window.eval 执行）。
  *
- * 思源从磁盘读 `<workspace>/data/themes/<name>/theme.css`，而 `vite dev` 只在内存
- * 里编译、不落盘。插件 JS 更严格——思源用 `window.eval(...)` 执行，需要 CJS 单文件，
- * dev server 给的是 ESM 模块图。所以父项目必须跑 `vite build --watch`。
- *
- * ## 钩子映射
- *
- *   config         注入构建配置（mergeConfig，用户值优先）
- *   configResolved 取 root / outDir / publicDir / watch，创建会话
- *   buildStart     把 public/** 逐个 addWatchFile
- *   writeBundle    搬运元数据 + 通知刷新
- *   closeBundle    校验 + 打包 + 汇报 + 构建完成日志
- *   closeWatcher   释放定时器
+ * watch：直接写 `<workspace>/data/themes|plugins/<name>`，并在项目根建 `<devDir>`
+ *        junction 指向它，方便开发者/IDE 查看。
+ * build：不探测思源，产物写 `dist`（或用户 build.outDir），校验后打包。
  */
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin, ResolvedConfig } from 'vite';
-import { applyBuildConfig } from './config.ts';
-import { detectKind } from './siyuan/kinds.ts';
+import { applyBuildConfig, assertResolvedContract } from './config.ts';
+import { detectKind, kindSpec, readName } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
 import { resolvePublicDir } from './siyuan/manifest.ts';
+import { findKernelPort } from './siyuan/port.ts';
+import { resolveInstallDir } from './siyuan/workspace.ts';
+import { resolveDevMirrorPath } from './siyuan/mirror.ts';
 import { createTaggedLogger } from './output/log.ts';
 import { createBuildSession } from './session.ts';
 import type { BuildSession } from './session.ts';
@@ -39,38 +34,57 @@ export interface SiYuanOptions {
   entry: string;
   /** 被测类型（theme / plugin）；缺省从清单推断。 */
   kind?: Kind | null;
-  /** 产物目录；缺省 `./dev`（watch）/ `./dist`（生产）。 */
-  outDir?: string | null;
+  /**
+   * watch 时在项目根建立的镜像链接名（相对项目根），指向思源安装目录。
+   * 缺省 `dev`。它只用于让开发者/IDE 看到实时产物，思源读的是真实目录。
+   */
+  devDir?: string | null;
 }
 
 export default function siyuan(options: SiYuanOptions): Plugin {
   const log = createTaggedLogger(NAME);
   let session: BuildSession | null = null;
   let kind: Kind | null = options.kind ?? null;
+  /** config 阶段解析出的安装目录，供 configResolved 的最终值校验使用。 */
+  let installDir: string | null = null;
 
   return {
     name: NAME,
     apply: 'build',
 
-    config(userConfig) {
+    async config(userConfig) {
       const root = typeof userConfig.root === 'string' ? resolve(userConfig.root) : process.cwd();
       const entry = resolve(root, options.entry);
       if (!existsSync(entry)) {
         throw new UserError(`entry 指向的文件不存在：${entry}（选项值：${options.entry}）`);
       }
-      // entry 必填意味着用户确实在建思源产物，所以识别不到类型是真错误，
-      // 不能像以前那样 warn 后跳过——那会让构建继续跑，最后崩在 Vite 的
-      // "Cannot resolve entry module index.html" 上，完全指错方向。
+      // entry 必填说明用户确实在建思源产物，识别不到类型就应当直接报错：
+      // 继续构建只会崩在 Vite 的 "Cannot resolve entry module index.html" 上，指错方向。
       // publicDir 在这里还没解析（configResolved 才给），先按用户配置算一遍。
       const publicDir = resolvePublicDir(root, userConfig.publicDir);
       kind ??= detectKind(publicDir);
       const watch = Boolean(userConfig.build?.watch);
-      return applyBuildConfig(userConfig, { kind, watch, entry, outDir: options.outDir ?? null });
+
+      // watch 才需要知道思源装在哪；build 完全不碰宿主，CI 可跑。
+      installDir = null;
+      if (watch) {
+        const spec = kindSpec(kind);
+        const name = readName(publicDir, kind);
+        const port = await findKernelPort();
+        installDir = await resolveInstallDir({
+          kind,
+          subdir: spec.installSubdir,
+          dirEnv: spec.dirEnv,
+          name,
+          port,
+        });
+      }
+      return applyBuildConfig(userConfig, { kind, watch, entry, installDir });
     },
 
     configResolved(resolvedConfig: ResolvedConfig) {
       const root = resolvedConfig.root;
-      const outDir = resolvedConfig.build.outDir;
+      const outDir = resolve(root, resolvedConfig.build.outDir);
       const publicDir = resolvedConfig.publicDir;
       const watch = resolvedConfig.command === 'build' && Boolean(resolvedConfig.build.watch);
       if (!kind) {
@@ -78,8 +92,17 @@ export default function siyuan(options: SiYuanOptions): Plugin {
         // 不能只 warn 后跳过校验——静默产出思源加载不到的东西更难排查。
         throw new UserError('识别不到被测类型：请确认 publicDir 下的 theme.json / plugin.json，或用 kind 选项显式指定');
       }
+      // Vite 还会把 config 钩子返回值与用户配置再 merge 一次，之后的插件
+      // （尤其 enforce:'post'）仍能覆盖契约键。所以按最终值再查一遍。
+      assertResolvedContract(
+        { base: resolvedConfig.base, build: resolvedConfig.build as unknown as Record<string, unknown> },
+        kind,
+        watch,
+        installDir
+      );
+      const devMirror = watch ? resolveDevMirrorPath(root, options.devDir ?? 'dev', outDir) : null;
       session = createBuildSession(
-        { root, outDir: resolve(root, outDir), publicDir, watch },
+        { root, outDir, publicDir, watch, devMirror },
         { kind, log, previewLogger: log }
       );
       // 生产构建的最终结果由「已打包 + build #N ready」体现，模式说明只对排查有用。

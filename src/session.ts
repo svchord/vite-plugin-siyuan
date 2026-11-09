@@ -1,12 +1,12 @@
 /**
- * 构建会话编排：链接 → 激活 → 刷新 → 校验 → 打包 → 汇报。
+ * 构建会话编排：镜像 → 激活 → 刷新 → 校验 → 打包 → 汇报。
  *
  * 会话在首次产物落盘后才建（懒启动），避免 `vite build` 去连思源。
  */
 import { relative, resolve } from 'node:path';
 import { activate, reloadUI } from './siyuan/activate.ts';
 import { copyReadmes, watchPublicFiles } from './artifact/assets.ts';
-import { ensureLink } from './siyuan/link.ts';
+import { ensureDevMirror } from './siyuan/mirror.ts';
 import { kindSpec, readName } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
 import type { PreviewLogger } from './output/log.ts';
@@ -23,12 +23,14 @@ import { PACKAGE_NAME, writeZip } from './artifact/zip.ts';
 export interface BuildFacts {
   /** 项目根目录（绝对路径）。 */
   root: string;
-  /** 产物目录（绝对路径）。 */
+  /** 产物目录（绝对路径）。watch 时就是思源安装目录。 */
   outDir: string;
   /** public 目录的绝对路径；未配置时为空串。 */
   publicDir: string;
   /** 是否 watch 构建。 */
   watch: boolean;
+  /** watch 时项目根下镜像链接的绝对路径；build 时为 null。 */
+  devMirror: string | null;
 }
 
 export interface SessionOptions {
@@ -51,7 +53,7 @@ interface Ready {
  *
  * 生命周期：
  *   onStart       把 public/** 登记为监听文件
- *   onWritten     首次建会话（链接 + 激活）；之后搬元数据 + 合并刷新
+ *   onWritten     首次建会话（镜像 + 激活）；之后搬元数据 + 合并刷新
  *   onFinished    校验 + 打包（生产构建失败抛错）
  *   onEnd         打印会话汇报与预览入口（只一次）
  *   onClose       释放定时器
@@ -70,11 +72,12 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
   let pendingFiles: string[] = [];
   let chain: Promise<void> = Promise.resolve();
 
-  /** 建会话：找端口 → 解析安装目录 → 链接 → 激活。失败抛可读错误。 */
+  /** 建会话：找端口 → 解析安装目录 → 建镜像链接 → 激活。失败抛可读错误。 */
   async function start(): Promise<Ready> {
     const current = facts;
     const name = readName(current.publicDir, kind);
     const port = await findKernelPort();
+    // 产物目录就是安装目录；这里再解析一次仅为兜底（config 阶段已解析过）。
     const installPath = await resolveInstallDir({
       kind,
       subdir: spec.installSubdir,
@@ -83,10 +86,13 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       port,
     });
 
-    const link = ensureLink(current.outDir, installPath, { requireSymlink: spec.requireSymlink });
-    if (!link.ok) throw new UserError(link.reason ?? '建立链接失败');
-    // 首次建链是用户关心的安装结果；链接本来就在时路径只对排查有用，放 debug。
-    log(`已链接：${installPath}`, link.changed ? 'success' : 'debug');
+    if (current.devMirror === null) {
+      throw new UserError('内部错误：watch 会话缺少 devMirror 路径');
+    }
+    const mirror = ensureDevMirror(current.devMirror, installPath);
+    if (!mirror.ok) throw new UserError(mirror.reason ?? '建立镜像链接失败');
+    // 首次建镜像链接是用户关心的结果；链接本来就在时路径只对排查有用，放 debug。
+    log(`已镜像：${current.devMirror} → ${installPath}`, mirror.changed ? 'success' : 'debug');
 
     const activation = await activate(kind, port, name);
     if (!activation.ok) throw new UserError(activation.message);
@@ -171,7 +177,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
           await ensure();
         } catch (cause) {
           failed = true;
-          // UserError 已经是可读文案（链接权限、安装目录不存在、多个工作区…），
+          // UserError 已经是可读文案（安装目录不存在、多个工作区…），
           // 再套一层「思源在运行」会把权限问题误指成思源没启动。
           if (cause instanceof UserError) throw cause;
           throw new UserError(`watch 模式需要思源在运行：${describeError(cause)}`);
@@ -226,7 +232,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       signaled = true;
       if (current.watch && ready && !reported && !failed) {
         reported = true;
-        // 只汇报「现在处于什么状态」：链接/启用的成功路径已在动作发生时打过，
+        // 只汇报「现在处于什么状态」：激活的成功路径已在动作发生时打过，
         // 这里不再重复；刷新失败才是需要用户处理的问题。
         log(ready.activation.message, 'success');
         if (ready.firstReload && !ready.firstReload.ok) log(ready.firstReload.message, 'warn');

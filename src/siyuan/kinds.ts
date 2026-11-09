@@ -18,10 +18,8 @@ export interface KindSpec {
   installSubdir: string;
   /** 覆盖安装目录的环境变量名。 */
   dirEnv: string;
-  /** 链接后必须存在的文件。 */
+  /** 产物里必须存在的文件。 */
   expectedFiles: string[];
-  /** 安装目录是否必须被 Go 识别为真 symlink（插件是，主题可用 junction 兜底）。 */
-  requireSymlink: boolean;
   /** 产物变化时是否值得广播整页刷新。 */
   matchArtifact(filename: string): boolean;
   /** 产物里的 CSS 固定名。 */
@@ -34,7 +32,6 @@ const SPECS: Record<Kind, KindSpec> = {
     installSubdir: 'themes',
     dirEnv: 'SIYUAN_THEME_DIR',
     expectedFiles: ['theme.css', 'theme.json'],
-    requireSymlink: false,
     matchArtifact: (name) => name.endsWith('theme.css'),
     cssName: 'theme.css',
   },
@@ -42,8 +39,7 @@ const SPECS: Record<Kind, KindSpec> = {
     manifestName: 'plugin.json',
     installSubdir: 'plugins',
     dirEnv: 'SIYUAN_PLUGIN_DIR',
-    expectedFiles: ['index.js', 'plugin.json'],
-    requireSymlink: true,
+    expectedFiles: ['index.js', 'index.css', 'plugin.json'],
     matchArtifact: (name) => name.endsWith('index.js') || name.endsWith('index.css'),
     cssName: 'index.css',
   },

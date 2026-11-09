@@ -41,7 +41,7 @@ function petalEnabled(entry: { enabled?: boolean } | boolean | undefined): boole
 }
 
 /**
- * 让思源启用指定插件。首次链接插件目录后，思源配置里还没有「启用」这条记录，
+ * 让思源启用指定插件。首次写入插件目录后，思源配置里还没有「启用」这条记录，
  * 不调这一步页面刷新多少次都不会加载它。
  *
  * `setPetalEnabled` 幂等、不回报「原本是否启用」，所以先读 conf.petal。
