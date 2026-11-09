@@ -127,6 +127,8 @@ watch 模式首次就绪后还会打印桌面端 / 移动端两个稳定预览�
 | `SIYUAN_NO_ELEVATION=1` | 不弹 UAC 提权（CI 环境自动不弹） |
 | `SIYUAN_DEBUG=1` | 输出内部调试日志（端口探测、跳过监听、README 兜底等） |
 
+工作区自动探测的顺序：`SIYUAN_THEME_DIR` / `SIYUAN_PLUGIN_DIR` → 内核自报的 `workspaceDir`（`/api/system/getWorkspaceInfo`）→ 内核列表中唯一正在运行的工作区 → `workspace.json` 的唯一登记项。`workspace.json` 会保留历史工作区，登记多条不会导致报错；只有确实无法确认当前运行的是哪一个时，才需要显式指定安装目录。
+
 旧名 `SYD_NO_ELEVATION` / `SYD_DEBUG` 仍然兼容。
 
 ## 配套 CLI

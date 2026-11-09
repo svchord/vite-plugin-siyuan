@@ -9,6 +9,6 @@ export const TIMING = {
   uacPromptTimeout: 120000,
   /** kernel 端口探测超时。 */
   kernelProbe: 1500,
-  /** 问工作区列表的超时。 */
+  /** 问工作区信息 / 工作区列表的超时。 */
   workspacesProbe: 3000,
 } as const;
