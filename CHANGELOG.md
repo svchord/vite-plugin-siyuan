@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/svchord/vite-plugin-siyuan/compare/v0.3.0...v0.3.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* 精简用户可见日志并修正构建完成信号 ([5183453](https://github.com/svchord/vite-plugin-siyuan/commit/518345312a31a6bece70c11a65a2027caa1284ab))
+
 ## [0.3.0](https://github.com/svchord/vite-plugin-siyuan/compare/v0.2.0...v0.3.0) (2026-11-08)
 
 
