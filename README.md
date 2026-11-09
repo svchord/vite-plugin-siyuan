@@ -59,13 +59,13 @@ pnpm vite build --watch
 |---|---|
 | `entry` | **必填**。入口，相对 Vite root；主题指 CSS，插件指 TS/JS |
 | `kind` | `'theme'` / `'plugin'`；缺省按 `publicDir` 下的清单推断 |
-| `devDir` | watch 时项目根下的镜像链接名，缺省 `dev`。指向思源安装目录，只给开发者/IDE 看 |
+| `devDir` | watch 时项目根下的开发链接目录名，缺省 `dev`。Windows 为目录联接（junction），其他平台为符号链接；指向思源安装目录，只给开发者/IDE 看 |
 
 产物名是固定契约（`theme.css` / `index.js`），入口猜错不报错，只会静默加载不到。
 
 ## 行为
 
-**watch**：注入配置（`base: './'`、不压缩、输出目录为思源安装目录、不清空）→ 在项目根建立 `<devDir>` junction 指向安装目录 → 激活（主题 `setAppearance`，插件 `setPetalEnabled`）→ 产物变化合并 250ms 广播 `reloadUI` → 校验，未通过只告警。
+**watch**：注入配置（`base: './'`、不压缩、输出目录为思源安装目录、不清空）→ 在项目根建立 `<devDir>` 开发链接（Windows 为目录联接 junction）指向安装目录 → 激活（主题 `setAppearance`，插件 `setPetalEnabled`）→ 产物变化合并 250ms 广播 `reloadUI` → 校验，未通过只告警。
 
 **生产**：不探测思源，产物写 `dist`（或用户 `build.outDir`，构建前清空）→ 只校验 + 打包，在项目根写出 `package.zip`，不通过则抛错中止；不写工作区、不激活。
 

@@ -1,12 +1,12 @@
 /**
- * 构建会话编排：镜像 → 激活 → 刷新 → 校验 → 打包 → 汇报。
+ * 构建会话编排：链接 → 激活 → 刷新 → 校验 → 打包 → 汇报。
  *
  * 会话在首次产物落盘后才建（懒启动），避免 `vite build` 去连思源。
  */
 import { relative, resolve } from 'node:path';
 import { activate, reloadUI } from './siyuan/activate.ts';
 import { copyReadmes, pruneOutDir, watchPublicFiles } from './artifact/assets.ts';
-import { ensureDevMirror } from './siyuan/mirror.ts';
+import { ensureDevLink } from './siyuan/link.ts';
 import { kindSpec, readName } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
 import type { PreviewLogger } from './output/log.ts';
@@ -29,8 +29,8 @@ export interface BuildFacts {
   publicDir: string;
   /** 是否 watch 构建。 */
   watch: boolean;
-  /** watch 时项目根下镜像链接的绝对路径；build 时为 null。 */
-  devMirror: string | null;
+  /** watch 时项目根下开发链接的绝对路径；build 时为 null。 */
+  devLink: string | null;
 }
 
 export interface SessionOptions {
@@ -44,8 +44,8 @@ export interface SessionOptions {
 /** 会话内部的就绪状态。 */
 interface Ready {
   port: number;
-  /** 镜像链接：首轮新建要报给用户，复用则只对排查有用。 */
-  mirror: { link: string; target: string; changed: boolean };
+  /** 开发链接：首轮新建要报给用户，复用则只对排查有用。 */
+  devLink: { link: string; target: string; changed: boolean };
   activation: { ok: boolean; message: string };
   firstReload: { ok: boolean; message: string } | null;
 }
@@ -55,7 +55,7 @@ interface Ready {
  *
  * 生命周期：
  *   onStart       把 public/** 登记为监听文件
- *   onWritten     首次建会话（镜像 + 激活）；之后搬元数据 + 合并刷新
+ *   onWritten     首次建会话（链接 + 激活）；之后搬元数据 + 合并刷新
  *   onFinished    校验 + 打包（生产构建失败抛错）
  *   onEnd         打印会话汇报与预览入口（只一次）
  *   onClose       释放定时器
@@ -74,7 +74,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
   let pendingFiles: string[] = [];
   let chain: Promise<void> = Promise.resolve();
 
-  /** 建会话：找端口 → 解析安装目录 → 建镜像链接 → 激活。失败抛可读错误。 */
+  /** 建会话：找端口 → 解析安装目录 → 建开发链接 → 激活。失败抛可读错误。 */
   async function start(): Promise<Ready> {
     const current = facts;
     const name = readName(current.publicDir, kind);
@@ -88,11 +88,11 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       port,
     });
 
-    if (current.devMirror === null) {
-      throw new UserError('内部错误：watch 会话缺少 devMirror 路径');
+    if (current.devLink === null) {
+      throw new UserError('内部错误：watch 会话缺少 devLink 路径');
     }
-    const mirror = ensureDevMirror(current.devMirror, installPath);
-    if (!mirror.ok) throw new UserError(mirror.reason ?? '建立镜像链接失败');
+    const devLink = ensureDevLink(current.devLink, installPath);
+    if (!devLink.ok) throw new UserError(devLink.reason ?? '建立开发链接失败');
 
     const activation = await activate(kind, port, name);
     if (!activation.ok) throw new UserError(activation.message);
@@ -105,7 +105,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
 
     return {
       port,
-      mirror: { link: current.devMirror, target: installPath, changed: mirror.changed },
+      devLink: { link: current.devLink, target: installPath, changed: devLink.changed },
       activation: { ok: activation.ok, message: activation.message },
       firstReload,
     };
@@ -252,7 +252,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
         // 会话汇报整体放在这里，而不是建会话时逐条打：建会话发生在 writeBundle，
         // 紧接着 Vite 还要打印产物清单与 built in，插件日志会被夹在中间割成两截。
         // 收拢到 closeBundle 之后，用户看到的是「Vite 汇报完 → 插件汇报」的完整两块。
-        log(`已镜像：${ready.mirror.link} → ${ready.mirror.target}`, ready.mirror.changed ? 'success' : 'debug');
+        log(`已链接：${ready.devLink.link} → ${ready.devLink.target}`, ready.devLink.changed ? 'success' : 'debug');
         // 激活的成功路径已由上面的 message 体现，这里不再重复；刷新失败才需要处理。
         log(ready.activation.message, 'success');
         if (ready.firstReload && !ready.firstReload.ok) log(ready.firstReload.message, 'warn');

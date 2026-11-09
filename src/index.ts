@@ -5,7 +5,7 @@
  * 编译；插件 JS 还要求 CJS 单文件（思源用 window.eval 执行）。
  *
  * watch：直接写 `<workspace>/data/themes|plugins/<name>`，并在项目根建 `<devDir>`
- *        junction 指向它，方便开发者/IDE 查看。
+ *        开发链接指向它，方便开发者/IDE 查看。
  * build：不探测思源，产物写 `dist`（或用户 build.outDir），校验后打包。
  */
 import { existsSync } from 'node:fs';
@@ -17,7 +17,7 @@ import type { Kind } from './siyuan/kinds.ts';
 import { resolvePublicDir } from './siyuan/manifest.ts';
 import { findKernelPort } from './siyuan/port.ts';
 import { resolveInstallDir } from './siyuan/workspace.ts';
-import { resolveDevMirrorPath } from './siyuan/mirror.ts';
+import { resolveDevLinkPath } from './siyuan/link.ts';
 import { createTaggedLogger } from './output/log.ts';
 import { createBuildSession } from './session.ts';
 import type { BuildSession } from './session.ts';
@@ -35,7 +35,7 @@ export interface SiYuanOptions {
   /** 被测类型（theme / plugin）；缺省从清单推断。 */
   kind?: Kind | null;
   /**
-   * watch 时在项目根建立的镜像链接名（相对项目根），指向思源安装目录。
+   * watch 时在项目根建立的开发链接目录名（相对项目根），指向思源安装目录。
    * 缺省 `dev`。它只用于让开发者/IDE 看到实时产物，思源读的是真实目录。
    */
   devDir?: string | null;
@@ -100,9 +100,9 @@ export default function siyuan(options: SiYuanOptions): Plugin {
         watch,
         installDir
       );
-      const devMirror = watch ? resolveDevMirrorPath(root, options.devDir ?? 'dev', outDir) : null;
+      const devLink = watch ? resolveDevLinkPath(root, options.devDir ?? 'dev', outDir) : null;
       session = createBuildSession(
-        { root, outDir, publicDir, watch, devMirror },
+        { root, outDir, publicDir, watch, devLink },
         { kind, log, previewLogger: log }
       );
       // 生产构建的最终结果由「已打包 + build #N ready」体现，模式说明只对排查有用。

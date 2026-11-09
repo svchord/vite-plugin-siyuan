@@ -1,5 +1,5 @@
 /**
- * 项目根的镜像链接：让开发者/IDE 在项目里看到思源安装目录的实时产物。
+ * 项目根的开发链接：让开发者/IDE 在项目里看到思源安装目录的实时产物。
  *
  * 思源读的是真实安装目录，项目根的 junction 只用于查看，因此不需要管理员权限。
  */
@@ -21,9 +21,9 @@ function isInside(child: string, parent: string): boolean {
  * plugin-sample 推荐布局），`<root>/dev` 会成为 outDir 的子目录，junction
  * 指回父目录会形成自引用环，walkFiles / zip 都会把同一份产物展开几十层。
  */
-export function resolveDevMirrorPath(root: string, devDir: string, outDir: string): string {
+export function resolveDevLinkPath(root: string, devDir: string, outDir: string): string {
   const trimmed = devDir.trim();
-  if (!trimmed) throw new UserError('devDir 不能为空字符串：它决定项目根下镜像链接的名字。');
+  if (!trimmed) throw new UserError('devDir 不能为空字符串：它决定项目根下开发链接的名字。');
   if (isAbsolute(trimmed)) {
     throw new UserError(`devDir 必须是相对项目根的路径，不能是绝对路径：${devDir}`);
   }
@@ -43,18 +43,18 @@ export function resolveDevMirrorPath(root: string, devDir: string, outDir: strin
   return devPath;
 }
 
-export interface MirrorResult {
+export interface DevLinkResult {
   ok: boolean;
   changed: boolean;
   reason: string | null;
 }
 
 /**
- * 建立/校验项目根到安装目录的 junction。
+ * 建立/校验项目根到安装目录的开发链接。
  *
  * 已存在同名真实目录时**绝不覆盖**（可能是用户自己的文件夹），直接报可读错误。
  */
-export function ensureDevMirror(linkPath: string, targetPath: string): MirrorResult {
+export function ensureDevLink(linkPath: string, targetPath: string): DevLinkResult {
   let stat;
   try {
     stat = lstatSync(linkPath);

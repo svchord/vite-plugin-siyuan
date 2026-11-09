@@ -108,7 +108,7 @@ export function assertContractKeys(userConfig: UserConfig, kind: Kind, watch: bo
   if (watch && userConfig.build?.outDir !== undefined) {
     throw new UserError(
       'watch 模式下 build.outDir 由插件管理（直接写入思源安装目录），不能手动设置。\n' +
-        "  需要自定义项目根下的镜像链接名，请用 devDir 选项（默认 'dev'）。"
+        "  需要自定义项目根下的开发链接目录名，请用 devDir 选项（默认 'dev'）。"
     );
   }
 
