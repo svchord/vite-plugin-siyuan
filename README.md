@@ -146,6 +146,11 @@ watch 模式首次就绪后还会打印桌面端 / 移动端两个稳定预览�
    - `docs:` / `chore:` / `ci:` / `test:` / `refactor:` → 不发版
 3. 合并方式固定为 **Squash and merge**，PR 标题会成为最终 commit。
 
+本地提交信息同样受约束：`pnpm install` 会通过 `prepare` 安装 husky 钩子，
+`commit-msg` 用 commitlint 校验单条消息，`pre-push` 校验本次推送新增的提交，
+规则见 `commitlint.config.js`。绕过钩子（`git commit --no-verify`）产生的提交会在 push 时被拦下；
+确实需要绕过时用 `git push --no-verify`，并自行确认该提交不会进入 CHANGELOG。
+
 ### 发布流程
 
 用 [release-please](https://github.com/googleapis/release-please) 自动管理版本，仓库里不手写版本号：
