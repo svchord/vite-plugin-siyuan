@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-siyuan",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Vite plugin for SiYuan theme/plugin development: config injection, link to workspace, hot reload, verify and package",
   "keywords": [
     "siyuan",

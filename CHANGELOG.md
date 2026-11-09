@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/svchord/vite-plugin-siyuan/compare/v0.3.1...v0.3.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* 按内核自报工作区解析安装目录 ([daca244](https://github.com/svchord/vite-plugin-siyuan/commit/daca244b470b2f56430b357113d196c6c837473a))
+
 ## [0.3.1](https://github.com/svchord/vite-plugin-siyuan/compare/v0.3.0...v0.3.1) (2026-11-09)
 
 
