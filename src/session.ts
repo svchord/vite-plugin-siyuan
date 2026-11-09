@@ -5,7 +5,7 @@
  */
 import { relative, resolve } from 'node:path';
 import { activate, reloadUI } from './siyuan/activate.ts';
-import { copyReadmes, watchPublicFiles } from './artifact/assets.ts';
+import { copyReadmes, pruneOutDir, watchPublicFiles } from './artifact/assets.ts';
 import { ensureDevMirror } from './siyuan/mirror.ts';
 import { kindSpec, readName } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
@@ -155,8 +155,9 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       const current = facts;
       wrote = true;
       // 元数据搬运先做：校验时文件必须已经就位。
+      let readmeNames: string[] = [];
       try {
-        copyReadmes({
+        readmeNames = copyReadmes({
           root: current.root,
           publicDir: current.publicDir,
           outDir: relative(current.root, current.outDir) || '.',
@@ -167,6 +168,21 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       } catch (cause) {
         failed = true;
         throw cause;
+      }
+      // watch 的 emptyOutDir 必须是 false，旧产物不会自己消失，这里补一次修剪。
+      if (current.watch) {
+        try {
+          pruneOutDir({
+            outDir: current.outDir,
+            bundleFiles: files,
+            publicDir: current.publicDir,
+            readmeNames,
+            log,
+          });
+        } catch (cause) {
+          // 清理失败不该中断开发：留到下一轮再试。
+          log(`清理旧产物失败：${describeError(cause)}`, 'debug');
+        }
       }
       if (!current.watch) return;
 
