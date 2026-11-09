@@ -20,8 +20,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Windows 必须留：link.ts 的 junction / UAC 分支只有它能跑到。
         os: [ubuntu-latest, windows-latest]
-        node: [22, 24]
+        # 22 是 engines 的下限（floor smoke），26 是当前 LTS，24 夹在中间。
+        node: [22, 24, 26]
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
