@@ -110,7 +110,10 @@ function elevateSymlink(srcPath: string, targetPath: string): boolean {
 }
 
 function describeFailure(cause: unknown, requireSymlink: boolean, elevationFailed: boolean): string {
-  const lines = [`无法建立目录链接：${cause instanceof Error ? cause.message : String(cause)}`];
+  // cause 为 null 只可能出现在「循环没走到 catch」的理论分支；仍给出可读文案，
+  // 绝不能把 `null` 打给用户。
+  const detail = cause instanceof Error ? cause.message : cause === null ? '系统拒绝创建链接（权限不足）' : String(cause);
+  const lines = [`无法建立目录链接：${detail}`];
   if (elevationFailed) {
     lines.push('  UAC 提权被拒绝或超时：请重新运行并在弹窗点「是」，或预先开启 Windows 开发者模式。');
     lines.push('  插件目录必须是真 symlink，不能用 junction 兜底。');
@@ -203,9 +206,4 @@ export function ensureLink(
   }
 
   return { ok: false, changed: false, linkType: null, reason: describeFailure(null, requireSymlink, elevationFailed) };
-}
-
-/** 链接建好后，确认思源该读的文件真的在（防止链到空目录还以为成功）。 */
-export function checkLinkedFiles(targetPath: string, expectedFiles: string[]): string[] {
-  return expectedFiles.filter((file) => !existsSync(resolve(targetPath, file)));
 }

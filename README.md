@@ -94,13 +94,21 @@ pnpm vite build --watch
 
 ## 输出
 
-每轮构建结束时打印一行，供 agent 判断「可以测量了」：
+默认只打印用户需要知道的结果与需要处理的问题：链接/启用状态、校验失败、README 复制失败、打包结果与预览入口；端口探测、跳过监听这类内部过程只在 `SIYUAN_DEBUG=1` 时输出。
+
+watch 首轮构建不打印 `build #N` 信号（此时「会话就绪 + 预览入口」已经说明可以开始了）；之后每次热重载打印一行，供 agent 判断「可以测量了」：
 
 ```
 [vite-plugin-siyuan] build #12 ready · theme · watch
 ```
 
-生产构建对应的是：
+watch 构建失败（含校验未通过）对应的是：
+
+```
+[vite-plugin-siyuan] build #12 failed · theme · watch
+```
+
+生产构建成功时：
 
 ```
 [vite-plugin-siyuan] build #1 ready · theme · package.zip
@@ -117,7 +125,7 @@ watch 模式首次就绪后还会打印桌面端 / 移动端两个稳定预览�
 | `SIYUAN_PLUGIN_DIR` | 插件安装父目录（`{workspace}/data/plugins`），同上 |
 | `SIYUAN_TOKEN` | 开了 API token 时使用 |
 | `SIYUAN_NO_ELEVATION=1` | 不弹 UAC 提权（CI 环境自动不弹） |
-| `SIYUAN_DEBUG=1` | 输出 debug 级日志 |
+| `SIYUAN_DEBUG=1` | 输出内部调试日志（端口探测、跳过监听、README 兜底等） |
 
 旧名 `SYD_NO_ELEVATION` / `SYD_DEBUG` 仍然兼容。
 

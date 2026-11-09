@@ -6,7 +6,7 @@
 import { relative, resolve } from 'node:path';
 import { activate, reloadUI } from './siyuan/activate.ts';
 import { copyReadmes, watchPublicFiles } from './artifact/assets.ts';
-import { checkLinkedFiles, ensureLink } from './siyuan/link.ts';
+import { ensureLink } from './siyuan/link.ts';
 import { kindSpec, readName } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
 import type { PreviewLogger } from './output/log.ts';
@@ -42,10 +42,7 @@ export interface SessionOptions {
 /** 会话内部的就绪状态。 */
 interface Ready {
   port: number;
-  name: string;
-  linkedPath: string | null;
-  missingFiles: string[];
-  activation: { ok: boolean; message: string } | null;
+  activation: { ok: boolean; message: string };
   firstReload: { ok: boolean; message: string } | null;
 }
 
@@ -66,6 +63,9 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
   let starting: Promise<Ready> | null = null;
   let reported = false;
   let buildCount = 0;
+  let failed = false;
+  let wrote = false;
+  let signaled = false;
   let pendingTimer: NodeJS.Timeout | null = null;
   let pendingFiles: string[] = [];
   let chain: Promise<void> = Promise.resolve();
@@ -85,25 +85,20 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
 
     const link = ensureLink(current.outDir, installPath, { requireSymlink: spec.requireSymlink });
     if (!link.ok) throw new UserError(link.reason ?? '建立链接失败');
-    if (link.changed) log(`已链接：${installPath}`, 'success');
-    const missing = checkLinkedFiles(installPath, spec.expectedFiles);
-    if (missing.length) log(`链接目录缺少 ${missing.join('、')}，构建完成后会补齐`, 'warn');
+    // 首次建链是用户关心的安装结果；链接本来就在时路径只对排查有用，放 debug。
+    log(`已链接：${installPath}`, link.changed ? 'success' : 'debug');
 
     const activation = await activate(kind, port, name);
     if (!activation.ok) throw new UserError(activation.message);
 
     // 首次启用插件必须补一次刷新：思源配置刚变，不刷新页面不会加载它。
-    const firstReload = activation.changed ? { ok: await reloadUI(port), message: '' } : null;
-    if (firstReload) {
-      firstReload.message = firstReload.ok ? '已广播刷新，思源正在加载' : '刷新广播失败，请手动刷新思源窗口';
-      log(firstReload.message, firstReload.ok ? 'success' : 'warn');
-    }
+    // 成功是预期结果，不单独占一行；失败才需要提醒用户手动刷新。
+    const firstReload = activation.changed
+      ? { ok: await reloadUI(port), message: '刷新广播失败，请手动刷新思源窗口' }
+      : null;
 
     return {
       port,
-      name,
-      linkedPath: link.ok ? installPath : null,
-      missingFiles: missing,
       activation: { ok: activation.ok, message: activation.message },
       firstReload,
     };
@@ -133,28 +128,40 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
     chain = chain.then(async () => {
       if (!ready) return;
       const ok = await reloadUI(ready.port);
-      log(ok ? `页面已刷新：${matched[0]}` : `刷新未生效：${matched[0]}`, ok ? 'success' : 'warn');
+      // 每次保存都成功刷新是正常工作过程，不刷屏；失败必须让用户看到。
+      log(ok ? `页面已刷新：${matched[0]}` : `刷新未生效：${matched[0]}`, ok ? 'debug' : 'warn');
     });
   }
 
   return {
     /** 构建开始：把 public/** 逐个交给构建器登记监听。 */
     onStart(registerWatchFile: (file: string) => void): void {
+      // 每轮开始重置状态：上一轮失败不能污染下一轮的成功信号。
+      buildCount += 1;
+      failed = false;
+      wrote = false;
+      signaled = false;
       watchPublicFiles(facts.publicDir, registerWatchFile, log);
     },
 
     /** 产物写完。 */
     async onWritten(files: string[]): Promise<void> {
       const current = facts;
+      wrote = true;
       // 元数据搬运先做：校验时文件必须已经就位。
-      copyReadmes({
-        root: current.root,
-        publicDir: current.publicDir,
-        outDir: relative(current.root, current.outDir) || '.',
-        manifestName: spec.manifestName,
-        watch: current.watch,
-        log,
-      });
+      try {
+        copyReadmes({
+          root: current.root,
+          publicDir: current.publicDir,
+          outDir: relative(current.root, current.outDir) || '.',
+          manifestName: spec.manifestName,
+          watch: current.watch,
+          log,
+        });
+      } catch (cause) {
+        failed = true;
+        throw cause;
+      }
       if (!current.watch) return;
 
       // 会话还没起来：启动它，本轮不通知重载。
@@ -163,6 +170,10 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
         try {
           await ensure();
         } catch (cause) {
+          failed = true;
+          // UserError 已经是可读文案（链接权限、安装目录不存在、多个工作区…），
+          // 再套一层「思源在运行」会把权限问题误指成思源没启动。
+          if (cause instanceof UserError) throw cause;
           throw new UserError(`watch 模式需要思源在运行：${describeError(cause)}`);
         }
         return;
@@ -179,7 +190,12 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
     /** 一轮结束：校验 + 打包。 */
     onFinished(): void {
       const current = facts;
-      buildCount += 1;
+      // 构建在 writeBundle 之前就失败，或 writeBundle 已经失败：跳过校验/打包，
+      // 否则「产物目录不存在」会盖住真正的构建错误。
+      if (!wrote || failed) {
+        failed = true;
+        return;
+      }
       const result = verifyTarget(kind, {
         root: current.root,
         publicDir: current.publicDir,
@@ -189,6 +205,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
         const text = formatIssues(result.issues);
         if (current.watch) {
           // 开发中中断会让 watch 退出，得手动重开，代价太大。
+          failed = true;
           log(`产物校验未通过，开发模式仅提示：\n${text}`, 'warn');
         } else {
           throw new Error(`产物校验未通过：\n${text}`);
@@ -204,18 +221,28 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
     /** 本轮最后：打印会话汇报与预览入口（只一次），再打构建完成日志。 */
     onEnd(): void {
       const current = facts;
-      if (current.watch && ready && !reported) {
+      // Vite 在构建失败时可能多次触发 closeBundle；每轮只发一次完成信号。
+      if (signaled) return;
+      signaled = true;
+      if (current.watch && ready && !reported && !failed) {
         reported = true;
-        log(`已链接到思源 ${ready.linkedPath}`, 'success');
-        if (ready.missingFiles.length) log(`链接目录缺少 ${ready.missingFiles.join('、')}`, 'warn');
-        if (ready.activation) log(ready.activation.message, ready.activation.ok ? 'success' : 'error');
-        if (ready.firstReload) log(ready.firstReload.message, ready.firstReload.ok ? 'success' : 'warn');
+        // 只汇报「现在处于什么状态」：链接/启用的成功路径已在动作发生时打过，
+        // 这里不再重复；刷新失败才是需要用户处理的问题。
+        log(ready.activation.message, 'success');
+        if (ready.firstReload && !ready.firstReload.ok) log(ready.firstReload.message, 'warn');
         log('会话就绪，改源码会自动刷新页面', 'success');
         logPreviewLinks(previewLogger, ready.port);
       }
 
       // agent 的构建完成信号：纯文本、序号递增，便于从 stdout 里认。
+      // watch 首轮不打印：此时「会话就绪 + 预览入口」已经说明可以开始了，
+      // 只有后续热重载才需要这个信号。失败仍然要打印。
       const files = current.watch ? 'watch' : PACKAGE_NAME;
+      if (!wrote || failed) {
+        console.log(`[vite-plugin-siyuan] build #${buildCount} failed · ${kind} · ${files}`);
+        return;
+      }
+      if (current.watch && buildCount === 1) return;
       console.log(`[vite-plugin-siyuan] build #${buildCount} ready · ${kind} · ${files}`);
     },
 

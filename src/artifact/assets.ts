@@ -27,7 +27,8 @@ const README_PATTERN = /^README.*\.md$/;
 /** 把 publicDir 下的文件逐个交给构建器登记监听。 */
 export function watchPublicFiles(publicDir: string, registerWatchFile: (file: string) => void, log: Logger): void {
   if (!publicDir || !existsSync(publicDir)) {
-    log(`publicDir 不存在，跳过监听：${publicDir}`, 'warn');
+    // 清单缺失会在校验阶段报错；这里只是内部流程信息，不该默认打扰用户。
+    log(`publicDir 不存在，跳过监听：${publicDir}`, 'debug');
     return;
   }
   for (const file of walkFiles(publicDir)) registerWatchFile(file.path);
@@ -65,13 +66,14 @@ export function copyReadmes({
   const manifestPath = publicDir ? join(publicDir, manifestName) : join(root, 'public', manifestName);
   const parsed = readJsonFile(manifestPath);
   const declared = isRecord(parsed) ? declaredAssets(parsed, ['readme']) : null;
-  if (!isRecord(parsed)) log(`读不到或无法解析清单 ${manifestPath}；README 按 README*.md 兜底`, 'warn');
+  // 清单问题由构建收尾的校验统一报；这里只是 README 搬运的内部兜底过程。
+  if (!isRecord(parsed)) log(`读不到或无法解析清单 ${manifestPath}；README 按 README*.md 兜底`, 'debug');
 
   const names: string[] = [];
   if (declared?.length) {
     names.push(...declared);
   } else {
-    log(`清单 ${manifestPath} 没声明 readme，按 README*.md 兜底搬运`, 'warn');
+    log(`清单 ${manifestPath} 没声明 readme，按 README*.md 兜底搬运`, 'debug');
     names.push(
       ...readdirSync(root, { withFileTypes: true })
         .filter((entry) => entry.isFile() && README_PATTERN.test(entry.name))

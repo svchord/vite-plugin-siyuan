@@ -74,14 +74,16 @@ export default function siyuan(options: SiYuanOptions): Plugin {
       const publicDir = resolvedConfig.publicDir;
       const watch = resolvedConfig.command === 'build' && Boolean(resolvedConfig.build.watch);
       if (!kind) {
-        log('识别不到被测类型，跳过链接与校验', 'warn');
-        return;
+        // 正常情况下 config 阶段已确定类型或抛错；走到这里说明状态异常，
+        // 不能只 warn 后跳过校验——静默产出思源加载不到的东西更难排查。
+        throw new UserError('识别不到被测类型：请确认 publicDir 下的 theme.json / plugin.json，或用 kind 选项显式指定');
       }
       session = createBuildSession(
         { root, outDir: resolve(root, outDir), publicDir, watch },
         { kind, log, previewLogger: log }
       );
-      if (!watch) log('生产构建：不启动热重载会话，只校验产物并打包');
+      // 生产构建的最终结果由「已打包 + build #N ready」体现，模式说明只对排查有用。
+      if (!watch) log('生产构建：不启动热重载会话，只校验产物并打包', 'debug');
     },
 
     buildStart() {

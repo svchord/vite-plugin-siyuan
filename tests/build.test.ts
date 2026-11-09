@@ -3,7 +3,7 @@
  *
  * 清单必须写全（name/author/url/version），否则插件收尾的校验会按设计拒绝打包。
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildProject } from './fixtures/real-build.ts';
 
 const THEME_MANIFEST = JSON.stringify({
@@ -76,5 +76,38 @@ describe('plugin 构建', () => {
     } finally {
       project.cleanup();
     }
+  });
+
+  it('构建失败时输出 failed，不能输出 ready', async () => {
+    const project = await buildProject({
+      'public/plugin.json': JSON.stringify({
+        name: 'test-plugin',
+        author: 'tester',
+        url: 'https://example.com',
+        version: '1.0.0',
+        minAppVersion: '3.1.0',
+      }),
+      'src/index.ts': 'export default class {',
+    });
+    const lines: string[] = [];
+    let message = '';
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      lines.push(args.map((arg) => String(arg)).join(' '));
+    });
+    try {
+      try {
+        await project.build({ kind: 'plugin', entry: 'src/index.ts' });
+      } catch (cause) {
+        message = cause instanceof Error ? cause.message : String(cause);
+      }
+    } finally {
+      spy.mockRestore();
+      project.cleanup();
+    }
+    expect(message).not.toBe('');
+    // 真正的语法错误不能被「产物目录不存在」的校验错误盖住。
+    expect(message).not.toContain('产物目录不存在');
+    expect(lines.some((line) => line.includes('build #') && line.includes('ready'))).toBe(false);
+    expect(lines.some((line) => line.includes('build #') && line.includes('failed'))).toBe(true);
   });
 });
