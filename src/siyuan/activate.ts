@@ -16,8 +16,12 @@ interface AppearanceConfig {
 interface SystemConf {
   conf?: {
     appearance?: AppearanceConfig;
-    petal?: Record<string, { enabled?: boolean } | boolean>;
   };
+}
+
+/** `/api/bazaar/getInstalledPlugin` 的响应：只用到启用状态。 */
+interface InstalledPackages {
+  packages?: Array<{ name?: string; enabled?: boolean }>;
 }
 
 /** 让思源选中指定主题（明暗都设成它）；已经是它时不动，避免无谓重载。 */
@@ -36,23 +40,50 @@ async function selectTheme(port: number, themeName: string): Promise<{ ok: boole
   return { ok: true, changed: true, reason: null };
 }
 
-function petalEnabled(entry: { enabled?: boolean } | boolean | undefined): boolean {
-  return typeof entry === 'boolean' ? entry : entry?.enabled === true;
+/**
+ * 读插件当前的启用状态。
+ *
+ * 不能读 `getConf` 的 `conf.petal`：3.8.x 的响应里根本没有这个键（conf.json 也不存），
+ * 于是 `wasEnabled` 恒为 false——每次都误判成「刚启用」，白广播一次整页刷新。
+ * 改用 bazaar 的已安装列表，它带 `enabled` 字段且随 `setPetalEnabled` 实时变化。
+ *
+ * 读失败返回 null 而不是 false：宁可多广播一次刷新，也不要让日志把状态说反。
+ */
+async function isPluginEnabled(port: number, pluginName: string): Promise<boolean | null> {
+  try {
+    const result = await callKernel<InstalledPackages>(
+      port,
+      '/api/bazaar/getInstalledPlugin',
+      { frontend: 'desktop' },
+      TIMING.kernelReloadTimeout
+    );
+    const found = result.data?.packages?.find((item) => item.name === pluginName);
+    return typeof found?.enabled === 'boolean' ? found.enabled : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * 让思源启用指定插件。首次写入插件目录后，思源配置里还没有「启用」这条记录，
  * 不调这一步页面刷新多少次都不会加载它。
  *
- * `setPetalEnabled` 幂等、不回报「原本是否启用」，所以先读 conf.petal。
+ * **始终启用，包括用户手动禁用过的插件**：watch 是开发流程，插件不加载就看不到
+ * 任何改动，会被误判成热重载坏了。但覆盖了用户的禁用意图，所以 `wasEnabled`
+ * 一路带回报告层，让日志能明说是「原本被禁用、已自动启用」而不是含糊的「已启用」。
+ *
+ * `setPetalEnabled` 幂等、不回报「原本是否启用」，所以先读一次启用状态。
  * 这个 changed 决定要不要广播一次刷新：漏了它，第一次启用的插件永远不加载。
  */
-async function enablePlugin(port: number, pluginName: string): Promise<{ ok: boolean; changed: boolean; reason: string | null }> {
-  const conf = await callKernel<SystemConf>(port, '/api/system/getConf', {}, TIMING.kernelReloadTimeout);
-  const wasEnabled = petalEnabled(conf.data?.conf?.petal?.[pluginName]);
+async function enablePlugin(
+  port: number,
+  pluginName: string
+): Promise<{ ok: boolean; changed: boolean; wasEnabled: boolean | null; reason: string | null }> {
+  const wasEnabled = await isPluginEnabled(port, pluginName);
   const result = await callKernel(port, '/api/petal/setPetalEnabled', { packageName: pluginName, enabled: true }, TIMING.kernelReloadTimeout);
-  if (result.code !== 0) return { ok: false, changed: false, reason: `启用插件失败：${result.msg || '未知错误'}` };
-  return { ok: true, changed: !wasEnabled, reason: null };
+  if (result.code !== 0) return { ok: false, changed: false, wasEnabled, reason: `启用插件失败：${result.msg || '未知错误'}` };
+  // 读不到现状时按「变了」处理：多刷一次是无害的，漏刷会让插件一直不加载。
+  return { ok: true, changed: wasEnabled !== true, wasEnabled, reason: null };
 }
 
 /** 按类型激活；返回是否真的改变了宿主状态（变了才需要补一次刷新）。 */
@@ -64,7 +95,14 @@ export async function activate(kind: Kind, port: number, name: string): Promise<
   }
   const enabled = await enablePlugin(port, name);
   if (!enabled.ok) return { ok: false, changed: false, message: enabled.reason ?? '启用插件失败' };
-  return { ok: true, changed: enabled.changed, message: enabled.changed ? `插件已启用：${name}` : `插件已是启用状态：${name}` };
+  // 禁用是用户的明确意图，被自动改回来必须让他看见，不能混在「已启用」里。
+  const message =
+    enabled.wasEnabled === true
+      ? `插件已是启用状态：${name}`
+      : enabled.wasEnabled === false
+        ? `插件原本被禁用，已自动启用：${name}`
+        : `插件已启用：${name}`;
+  return { ok: true, changed: enabled.changed, message };
 }
 
 /** 广播整页刷新。返回是否成功（code === 0）。 */

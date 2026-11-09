@@ -44,6 +44,8 @@ export interface SessionOptions {
 /** 会话内部的就绪状态。 */
 interface Ready {
   port: number;
+  /** 镜像链接：首轮新建要报给用户，复用则只对排查有用。 */
+  mirror: { link: string; target: string; changed: boolean };
   activation: { ok: boolean; message: string };
   firstReload: { ok: boolean; message: string } | null;
 }
@@ -91,8 +93,6 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
     }
     const mirror = ensureDevMirror(current.devMirror, installPath);
     if (!mirror.ok) throw new UserError(mirror.reason ?? '建立镜像链接失败');
-    // 首次建镜像链接是用户关心的结果；链接本来就在时路径只对排查有用，放 debug。
-    log(`已镜像：${current.devMirror} → ${installPath}`, mirror.changed ? 'success' : 'debug');
 
     const activation = await activate(kind, port, name);
     if (!activation.ok) throw new UserError(activation.message);
@@ -105,6 +105,7 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
 
     return {
       port,
+      mirror: { link: current.devMirror, target: installPath, changed: mirror.changed },
       activation: { ok: activation.ok, message: activation.message },
       firstReload,
     };
@@ -248,8 +249,11 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       signaled = true;
       if (current.watch && ready && !reported && !failed) {
         reported = true;
-        // 只汇报「现在处于什么状态」：激活的成功路径已在动作发生时打过，
-        // 这里不再重复；刷新失败才是需要用户处理的问题。
+        // 会话汇报整体放在这里，而不是建会话时逐条打：建会话发生在 writeBundle，
+        // 紧接着 Vite 还要打印产物清单与 built in，插件日志会被夹在中间割成两截。
+        // 收拢到 closeBundle 之后，用户看到的是「Vite 汇报完 → 插件汇报」的完整两块。
+        log(`已镜像：${ready.mirror.link} → ${ready.mirror.target}`, ready.mirror.changed ? 'success' : 'debug');
+        // 激活的成功路径已由上面的 message 体现，这里不再重复；刷新失败才需要处理。
         log(ready.activation.message, 'success');
         if (ready.firstReload && !ready.firstReload.ok) log(ready.firstReload.message, 'warn');
         log('会话就绪，改源码会自动刷新页面', 'success');
