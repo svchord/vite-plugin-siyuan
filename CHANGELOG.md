@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/svchord/vite-plugin-siyuan/compare/v0.4.0...v0.4.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* 不再在运行时 import vite，恢复被吞掉的插件报错 ([90d1c6f](https://github.com/svchord/vite-plugin-siyuan/commit/90d1c6f44d47e60a7caa5f36ad24e6b132996469))
+
 ## [0.4.0](https://github.com/svchord/vite-plugin-siyuan/compare/v0.3.2...v0.4.0) (2026-11-10)
 
 
