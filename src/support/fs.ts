@@ -15,8 +15,8 @@ export interface WalkedFile {
 /**
  * 递归列出目录下所有文件；目录不存在时返回空数组。
  *
- * 用 `readdirSync({ recursive: true })`（Node ≥20.1）而不是手写递归：
- * 结果按路径排序，保证 zip 条目顺序稳定。
+ * 顺序由本函数的显式 sort 保证（`readdirSync` 不保证返回顺序），
+ * 这样 zip 条目顺序才稳定、可复现。
  */
 export function walkFiles(dir: string): WalkedFile[] {
   if (!existsSync(dir)) return [];

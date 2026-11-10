@@ -1,9 +1,9 @@
 /**
  * 激活的启用状态判断。
  *
- * 回归重点：`getConf` 的 `conf.petal` 在思源 3.8.x 里根本不存在，用它判断会让
- * `changed` 恒为 true——日志永远说「插件已启用」，还每轮白广播一次整页刷新。
- * 状态必须来自 bazaar 的已安装列表。
+ * 启用状态必须来自 `/api/bazaar/getInstalledPlugin` 的 `enabled` 字段：
+ * 思源 3.8.x 的 `getConf` 响应没有 `conf.petal`，据此判断会让 `changed` 恒为 true，
+ * 日志误报「插件已启用」并每轮白广播整页刷新。
  */
 import { describe, expect, it, vi } from 'vitest';
 import { activate, reloadUI } from '../src/siyuan/activate.ts';
@@ -31,7 +31,7 @@ function routes(handlers: Record<string, () => unknown>) {
 }
 
 describe('activate plugin', () => {
-  it('插件已启用时报告 changed=false，不再白广播刷新', async () => {
+  it('插件已启用时报告 changed=false，不额外广播刷新', async () => {
     routes({
       '/api/bazaar/getInstalledPlugin': () => installed([{ name: 'demo', enabled: true }]),
       '/api/petal/setPetalEnabled': () => ({ code: 0, data: null }),
@@ -85,7 +85,7 @@ describe('activate plugin', () => {
 
   it('读不到启用状态时按「变了」处理：多刷一次好过漏刷', async () => {
     routes({
-      // 接口报错：调用方 catch 成 null
+      // 模拟接口不可用：`isPluginEnabled` 会吞掉异常返回 null，changed 必须按 true 处理。
       '/api/bazaar/getInstalledPlugin': () => {
         throw new Error('kernel 没这个接口');
       },
@@ -98,7 +98,7 @@ describe('activate plugin', () => {
     expect(result.message).toBe('插件已启用：demo');
   });
 
-  it('不再读 getConf 的 conf.petal 判断状态', async () => {
+  it('用 bazaar 的已安装列表判断状态', async () => {
     routes({
       '/api/system/getConf': () => confWithoutPetal(),
       '/api/bazaar/getInstalledPlugin': () => installed([{ name: 'demo', enabled: true }]),

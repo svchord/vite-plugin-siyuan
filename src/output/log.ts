@@ -2,8 +2,8 @@
  * 日志：consola 带 tag 前缀，保留级别图标与配色。
  *
  * 默认级别只输出用户需要知道的结果与需要处理的问题；内部过程信息走 debug，
- * 由 `SIYUAN_DEBUG=1`（旧名 `SYD_DEBUG`）打开。用精确比较而不是 truthiness：
- * `=0` 在 shell 里很常见，truthiness 会把它读成「开」。
+ * 由 `SIYUAN_DEBUG=1`（旧名 `SYD_DEBUG`）打开。必须用 `=== '1'` 精确比较：
+ * shell 里 `=0` 很常见，truthiness 会把它读成「开」。
  *
  * 用 `compact: false` 让多行消息保持原样——预览入口那块靠它维持缩进。
  */

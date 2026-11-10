@@ -43,9 +43,9 @@ async function selectTheme(port: number, themeName: string): Promise<{ ok: boole
 /**
  * 读插件当前的启用状态。
  *
- * 不能读 `getConf` 的 `conf.petal`：3.8.x 的响应里根本没有这个键（conf.json 也不存），
- * 于是 `wasEnabled` 恒为 false——每次都误判成「刚启用」，白广播一次整页刷新。
- * 改用 bazaar 的已安装列表，它带 `enabled` 字段且随 `setPetalEnabled` 实时变化。
+ * 必须用 `getInstalledPlugin` 的 `enabled`：`conf.petal` 在 3.8.x 不存在
+ * （conf.json 也不存），读它只会得到恒 false 的 `wasEnabled`，每次误判成「刚启用」
+ * 并白广播一次整页刷新。`enabled` 随 `setPetalEnabled` 实时变化。
  *
  * 读失败返回 null 而不是 false：宁可多广播一次刷新，也不要让日志把状态说反。
  */

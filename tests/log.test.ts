@@ -1,11 +1,11 @@
 /**
  * 日志级别契约：默认只输出用户关心的 info/success/warn/error，
- * 内部过程走 debug，只有 SIYUAN_DEBUG=1 时才出现。
+ * 内部过程走 debug，只有 `SIYUAN_DEBUG=1`（兼容旧名 `SYD_DEBUG=1`）时才出现。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createTaggedLogger } from '../src/output/log.ts';
 
-/** 捕获 consola 写到 stdout 的内容；返回拼接后的文本。 */
+/** 只截获 stdout，避免断言依赖终端渲染。 */
 function captureStdout(run: () => void): string {
   const chunks: string[] = [];
   const spy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {

@@ -1,9 +1,8 @@
 /**
  * 校验只扫本次产物目录，不扫项目根。
  *
- * 回归用例：旧实现有一条「产物目录不存在 + 清单在项目根 → 当成解包后的
- * package.zip 去扫项目根」的分支。插件永远在真实构建之后校验，那条分支会把
- * `node_modules/**` 当成产物扫进来，报出几百条「主题产物里出现 JavaScript」。
+ * 扫项目根会把 `node_modules/**` 当成产物，报出几百条
+ * 「主题产物里出现 JavaScript」。
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

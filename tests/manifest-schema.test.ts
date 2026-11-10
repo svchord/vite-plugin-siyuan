@@ -2,7 +2,7 @@
  * 清单 schema：类型错误必须在构建时就报出来。
  *
  * 思源对这些错误是静默的——`name: 123` 不会报错，只是主题不出现在列表里。
- * 旧实现只检查字段是否存在，类型错了照样通过，所以这里专门锁住类型检查。
+ * 这里专门锁住类型检查。
  */
 import { describe, expect, it } from 'vitest';
 import { pluginManifestShape, themeManifestShape } from '../src/artifact/manifest-schema.ts';
@@ -35,7 +35,7 @@ describe('theme 清单', () => {
     expect(themeManifestShape.safeParse(THEME).success).toBe(true);
   });
 
-  it('name 是数字时报错（旧实现漏掉的）', () => {
+  it('name 是数字时报错', () => {
     expect(firstIssue(themeManifestShape, { ...THEME, name: 123 })).toContain('必须是字符串');
   });
 
@@ -52,7 +52,7 @@ describe('theme 清单', () => {
   });
 
   it('超出安全整数范围的版本号也拒绝（正则挡不住，semver.parse 能）', () => {
-    // 这是恢复 semver 依赖的理由：手写正则会让它通过
+    // 手写正则挡不住这个版本号，必须交给 semver.parse
     expect(themeManifestShape.safeParse({ ...THEME, version: '999999999999999999999.0.0' }).success).toBe(false);
   });
 

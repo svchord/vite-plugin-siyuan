@@ -56,8 +56,8 @@ export async function callKernel<T = unknown>(
 /**
  * 思源配置目录候选路径。
  *
- * 常见位置按平台不同，但 `~/.config/siyuan` **不是 Linux 专有**：本机（Windows）
- * 的 port.json / workspace.json 就在这里。所以它作为兜底对所有平台都加。
+ * 常见位置按平台不同，但 `~/.config/siyuan` **不是 Linux 专有**：Windows 上的
+ * port.json / workspace.json 也可能在这里。所以它作为兜底对所有平台都加。
  */
 function siyuanConfigDirs(): string[] {
   const dirs: string[] = [];

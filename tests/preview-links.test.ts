@@ -1,5 +1,6 @@
 /**
- * 预览入口的排版：标题 + 每个前端一行，端口单独加粗。
+ * 预览链接必须打印实际内核端口：多实例或自定义 `SIYUAN_PORT` 时写死端口会误导；
+ * 端口单独加粗，便于核对。
  */
 import { describe, expect, it } from 'vitest';
 import { formatPreviewLinks } from '../src/output/preview-links.ts';

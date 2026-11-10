@@ -1,7 +1,8 @@
 /**
  * 真实构建的契约：产物名、`base`、资源路径重写。
  *
- * 清单必须写全（name/author/url/version），否则插件收尾的校验会按设计拒绝打包。
+ * 清单必须满足 schema：共有 name/author/url/version，主题另需 modes，
+ * 插件另需 minAppVersion；否则构建收尾的校验会拒绝打包。
  */
 import { describe, expect, it, vi } from 'vitest';
 import { buildProject } from './fixtures/real-build.ts';

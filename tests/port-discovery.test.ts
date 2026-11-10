@@ -3,8 +3,8 @@
  *
  * 两个回归点：
  *  1. `pickKernelPid` 必须从进程名里认出 kernel（Windows 带 .exe，POSIX 不带）。
- *  2. `~/.config/siyuan` 不是 Linux 专有：本机 Windows 的 port.json 就在那里。
- *     旧实现 win32 分支只找 %APPDATA%，导致 port.json 永远读不到。
+ *  2. `~/.config/siyuan` 不是 Linux 专有：Windows 上的 port.json 也可能在这里，
+ *     所有平台都必须探测它。
  */
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -49,8 +49,7 @@ describe('pickKernelPid', () => {
 
 describe('配置目录候选', () => {
   it('~/.config/siyuan/port.json 必须在候选里（所有平台）', () => {
-    // 回归用例：本机是 Windows，但 port.json 实际在 ~/.config/siyuan；
-    // 旧实现 win32 分支只返回 %APPDATA%，导致这个文件永远读不到。
+    // Windows 上 port.json 也可能落在 ~/.config/siyuan；只查 %APPDATA% 会漏掉。
     const candidates = portMapCandidates();
     expect(candidates).toContain(join(homedir(), '.config', 'siyuan', 'port.json'));
   });

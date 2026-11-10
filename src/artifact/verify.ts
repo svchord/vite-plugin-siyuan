@@ -45,8 +45,8 @@ export function verifyTarget(
 ): VerifyResult {
   const spec = kindSpec(kind);
   const issues: VerifyIssue[] = [];
-  // 只校验本次构建的产物目录。不做「产物目录不存在就改扫项目根」的兜底：
-  // 插件永远在真实构建之后校验，那种兜底只会把 node_modules 当成产物扫进来。
+  // 只校验本次构建的产物目录：改扫项目根会把 node_modules 当成产物，
+  // 报出大量「主题产物里出现 JavaScript」的假问题。
   const absOutDir = isAbsolute(outDir) ? outDir : join(root, outDir);
 
   const walked = walkFiles(absOutDir);
@@ -116,7 +116,7 @@ export function verifyTarget(
   if (existsSync(absOutDir) && kind === 'theme') {
     const scripts = files.filter((file) => file.endsWith('.js'));
     if (scripts.length) {
-      issues.push({ message: `主题产物里出现 JavaScript：${scripts.join('、')}`, hint: '主题只交付 CSS。检查 rollupOptions.input 与 lib 配置。' });
+      issues.push({ message: `主题产物里出现 JavaScript：${scripts.join('、')}`, hint: '主题只交付 CSS。检查构建入口与 lib 配置。' });
     }
     const css = readOutput('theme.css') ?? '';
     if (stripCssComments(css).includes('@layer')) {

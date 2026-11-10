@@ -1,8 +1,8 @@
 /**
  * 打包：把一个目录写成 `package.zip`。
  *
- * 用 fflate 的 `zipSync`：纯 JS、同步 API，与「构建结束时同步写盘」的语义一致，
- * 且与标准 zip 工具双向互通。
+ * `package.zip` 必须能被标准 zip 工具解开；写盘必须同步完成，
+ * 构建结束时就要拿到最终文件。
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

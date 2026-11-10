@@ -1,8 +1,8 @@
 /**
  * 思源清单的 schema：唯一的形状来源。
  *
- * 为什么需要：思源的失败模式是**静默的**。`name: 123` 不会被思源报错，
- * 只是主题不出现在列表里。旧实现只检查字段是否存在，类型错了照样通过。
+ * 思源的失败模式是**静默的**：`name: 123` 不会被思源报错，只是主题不出现在
+ * 列表里。因此必须校验已知字段的类型；字段存在但类型错，思源同样静默。
  *
  * 清单允许额外的集市字段（icon / preview / readme 的 i18n 对象等），
  * 所以这里**不** `.strict()`——未知字段是正常的。真正要拦的是已知字段的类型。
@@ -13,10 +13,10 @@ import { z } from 'zod';
 /**
  * 只认 `x.y.z`（与思源集市一致）：排除前导零、`v` 前缀、prerelease、build。
  *
- * 不用正则：正则的 `\d+` 会接受 `01.2.3`，而 semver 规范里这是非法的；
- * 也会接受超出安全整数范围的 `999999999999999999999.0.0`。
- * `semver.parse()` 按规范收窄，再按三点确认：可解析、`parsed.version === value`
- * （排除 `v1.2.3` 与带 build 的 `1.2.3+build`）、无 prerelease（排除 `1.2.3-beta`）。
+ * 必须用 `semver.parse()`：手写正则会把 `01.2.3` 和超出安全整数范围的
+ * `999999999999999999999.0.0` 当成合法。parse 后再按三点确认：可解析、
+ * `parsed.version === value`（排除 `v1.2.3` 与带 build 的 `1.2.3+build`）、
+ * 无 prerelease（排除 `1.2.3-beta`）。
  */
 function isSemver(value: unknown): boolean {
   if (typeof value !== 'string') return false;

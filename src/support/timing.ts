@@ -5,8 +5,6 @@ export const TIMING = {
   batchMs: 250,
   /** reloadUI 广播的超时。 */
   kernelReloadTimeout: 10000,
-  /** UAC 提权弹窗等待上限。 */
-  uacPromptTimeout: 120000,
   /** kernel 端口探测超时。 */
   kernelProbe: 1500,
   /** 问工作区信息 / 工作区列表的超时。 */

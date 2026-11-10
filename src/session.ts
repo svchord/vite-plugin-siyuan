@@ -249,11 +249,11 @@ export function createBuildSession(facts: BuildFacts, options: SessionOptions) {
       signaled = true;
       if (current.watch && ready && !reported && !failed) {
         reported = true;
-        // 会话汇报整体放在这里，而不是建会话时逐条打：建会话发生在 writeBundle，
-        // 紧接着 Vite 还要打印产物清单与 built in，插件日志会被夹在中间割成两截。
-        // 收拢到 closeBundle 之后，用户看到的是「Vite 汇报完 → 插件汇报」的完整两块。
+        // 会话汇报必须放到 closeBundle：writeBundle 阶段 Vite 还会打印产物清单与
+        // built in，在这里打印会被夹成两截，用户看不到完整的「Vite 汇报 → 插件汇报」。
         log(`已链接：${ready.devLink.link} → ${ready.devLink.target}`, ready.devLink.changed ? 'success' : 'debug');
-        // 激活的成功路径已由上面的 message 体现，这里不再重复；刷新失败才需要处理。
+        // activation.message 已含成功文案（已切换/已启用），直接打印即可；
+        // 只有刷新失败需要额外提示。
         log(ready.activation.message, 'success');
         if (ready.firstReload && !ready.firstReload.ok) log(ready.firstReload.message, 'warn');
         log('会话就绪，改源码会自动刷新页面', 'success');

@@ -28,7 +28,7 @@ const RELATIVE_BASES = new Set(['', '.', './']);
 /** 插件产物的固定入口名。 */
 const ENTRY_FILE_NAME = '[name].js';
 
-/** 资源名：CSS 固定名，其余按源目录归到 assets/ 下（避免不同目录的同名文件被去重）。 */
+/** 资源名：CSS 固定名，其余一律放 assets/ 下。`assetFileNames` 的 `info.name` 只有 basename，当前无法按源目录区分同名资源。 */
 function assetNamer(cssName: string) {
   return (info: { name?: string | null }): string => {
     const name = info.name ?? 'asset';
@@ -36,12 +36,12 @@ function assetNamer(cssName: string) {
   };
 }
 
-/** Vite 8 把 build.rollupOptions 改名为 build.rolldownOptions（旧名仍可用）。 */
+/** Vite ≥8 的等价键是 build.rolldownOptions；build.rollupOptions 作为已弃用别名仍可用。 */
 function defaultOptionsKey(): 'rollupOptions' | 'rolldownOptions' {
   return Number.parseInt(viteVersion, 10) >= 8 ? 'rolldownOptions' : 'rollupOptions';
 }
 
-/** 用户已经写了哪个键就跟着用哪个，避免两个键同时出现；否则按版本选。 */
+/** 两个键不能同时出现（Vite 只会读其中一个）；用户写了哪个就沿用它。 */
 function optionsKey(userConfig: UserConfig): 'rollupOptions' | 'rolldownOptions' {
   const build = userConfig.build;
   if (build && 'rollupOptions' in build) return 'rollupOptions';
@@ -49,7 +49,7 @@ function optionsKey(userConfig: UserConfig): 'rollupOptions' | 'rolldownOptions'
   return defaultOptionsKey();
 }
 
-/** 生成插件契约配置（不含用户值）。 */
+/** 生成构建契约配置（不含用户值）。 */
 export function buildSpecFor(input: BuildSpecInput): UserConfig {
   const spec = kindSpec(input.kind);
   const outDir = input.watch ? (input.installDir ?? './dev') : './dist';
@@ -69,7 +69,7 @@ export function buildSpecFor(input: BuildSpecInput): UserConfig {
     outDir,
     // watch 不清空（目录就是思源安装目录）；build 必须清空，否则残留会进 package.zip。
     emptyOutDir: !input.watch,
-    // watch 不压缩（便于直接看落盘产物），生产用默认压缩器。
+    // watch 产物不压缩：落盘文件要能直接读；生产构建用默认压缩。
     minify: !input.watch,
   };
   if (input.kind === 'plugin') {
@@ -125,18 +125,19 @@ export function assertContractKeys(userConfig: UserConfig, kind: Kind, watch: bo
     throw new UserError('build.ssr 不能开启：思源插件/主题是浏览器端产物，不是 SSR 构建。');
   }
 
-  const options = build?.[optionsKey(userConfig)] as Record<string, unknown> | undefined;
+  const optionsKeyName = optionsKey(userConfig);
+  const options = build?.[optionsKeyName] as Record<string, unknown> | undefined;
   const output = options?.output as Record<string, unknown> | undefined;
   const entryFileNames = output?.entryFileNames;
   if (entryFileNames !== undefined && entryFileNames !== ENTRY_FILE_NAME) {
     throw new UserError(
-      `build.rollupOptions.output.entryFileNames 由插件固定为 ${JSON.stringify(ENTRY_FILE_NAME)}，` +
+      `build.${optionsKeyName}.output.entryFileNames 由插件固定为 ${JSON.stringify(ENTRY_FILE_NAME)}，` +
         `不能设为 ${JSON.stringify(entryFileNames)}。思源按固定名加载产物。`
     );
   }
   if (output?.assetFileNames !== undefined) {
     throw new UserError(
-      'build.rollupOptions.output.assetFileNames 由插件固定（主题 theme.css / 插件 index.css），不能覆盖。'
+      `build.${optionsKeyName}.output.assetFileNames 由插件固定（主题 theme.css / 插件 index.css），不能覆盖。`
     );
   }
 
@@ -260,7 +261,6 @@ export function applyBuildConfig(userConfig: UserConfig, input: BuildSpecInput):
   build.emptyOutDir = !input.watch;
   build.outDir = input.watch ? input.installDir : (userBuild.outDir ?? 'dist');
 
-  // formats 让用户值直接透传，避免 Vite 外层数组拼接出重复项
   const userLib = userBuild.lib as Record<string, unknown> | undefined;
   const specLib = build.lib as Record<string, unknown> | undefined;
   if (input.kind === 'plugin' && specLib) {

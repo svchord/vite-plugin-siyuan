@@ -88,12 +88,11 @@ pnpm vite build --watch
 | `SIYUAN_THEME_DIR` | 主题安装父目录，装到 `{该目录}/{name}` |
 | `SIYUAN_PLUGIN_DIR` | 插件安装父目录，同上 |
 | `SIYUAN_TOKEN` | 开了 API token 时使用 |
-| `SIYUAN_NO_ELEVATION=1` | 不弹 UAC 提权 |
 | `SIYUAN_DEBUG=1` | 输出内部调试日志 |
 
 工作区顺序：上面两个目录变量 → 内核自报的 `workspaceDir` → 内核列表中唯一运行中的工作区 → `workspace.json` 的唯一登记项。登记多条历史工作区不算歧义。
 
-旧名 `SYD_NO_ELEVATION` / `SYD_DEBUG` 兼容。
+旧名 `SYD_DEBUG` 兼容。
 
 ## 配套 CLI
 

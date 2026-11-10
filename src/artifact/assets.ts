@@ -11,9 +11,8 @@
  *
  * ## 为什么要监听 public/
  *
- * 主流构建器的 `publicDir` 都只在**启动时**复制进产物，之后不再监听它，
- * 而思源的清单恰恰在 `public/` 里——改个 `theme.json` 的 modes 或版本号，
- * 不重启就永远不生效。所以要把 `public/**` 显式加进监听集合。
+ * `public/` 不在模块图里，改它不会触发重建，于是改了 `theme.json` 的 modes 或
+ * 版本号，不重启就永远不生效。所以要把 `public/**` 显式加进监听集合。
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, rmdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

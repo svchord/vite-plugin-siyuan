@@ -58,7 +58,7 @@ export default function siyuan(options: SiYuanOptions): Plugin {
       if (!existsSync(entry)) {
         throw new UserError(`entry 指向的文件不存在：${entry}（选项值：${options.entry}）`);
       }
-      // entry 必填说明用户确实在建思源产物，识别不到类型就应当直接报错：
+      // entry 必填说明用户确实在建思源产物，识别不到类型必须直接报错：
       // 继续构建只会崩在 Vite 的 "Cannot resolve entry module index.html" 上，指错方向。
       // publicDir 在这里还没解析（configResolved 才给），先按用户配置算一遍。
       const publicDir = resolvePublicDir(root, userConfig.publicDir);
@@ -88,8 +88,8 @@ export default function siyuan(options: SiYuanOptions): Plugin {
       const publicDir = resolvedConfig.publicDir;
       const watch = resolvedConfig.command === 'build' && Boolean(resolvedConfig.build.watch);
       if (!kind) {
-        // 正常情况下 config 阶段已确定类型或抛错；走到这里说明状态异常，
-        // 不能只 warn 后跳过校验——静默产出思源加载不到的东西更难排查。
+        // 正常情况下 config 阶段已确定类型或抛错；走到这里说明状态异常。
+        // 必须抛错：静默产出思源加载不到的东西更难排查。
         throw new UserError('识别不到被测类型：请确认 publicDir 下的 theme.json / plugin.json，或用 kind 选项显式指定');
       }
       // Vite 还会把 config 钩子返回值与用户配置再 merge 一次，之后的插件

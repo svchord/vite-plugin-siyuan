@@ -1,8 +1,8 @@
 /**
  * 开发预览入口的排版：绿色箭头 + 加粗端名 + 青色链接，端口单独加粗。
  *
- * 配色对齐 Vite 的 `printServerUrls()`；用 `consola/utils` 的 `colors`，
- * 调色板做成参数是为了可测——`colors` 在模块加载时按进程环境定型。
+ * 配色对齐 Vite 的 `printServerUrls()`；调色板必须由参数传入：`colors` 在模块
+ * 加载时按进程环境定型，测试无法改环境后再取色。
  */
 import { colors } from 'consola/utils';
 import type { Frontend } from '../siyuan/port.ts';
