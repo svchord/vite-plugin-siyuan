@@ -39,6 +39,17 @@ describe('buildSpecFor', () => {
     const spec = buildSpecFor(PLUGIN_WATCH);
     expect(spec.build?.outDir).toBe('/ws/data/plugins/p');
   });
+
+  it('Vite 8 用 rolldownOptions，旧版与版本未知用 rollupOptions', () => {
+    const build = (viteMajor: number | null) =>
+      buildSpecFor({ ...THEME, viteMajor }).build as Record<string, unknown>;
+    expect(build(8)).toHaveProperty('rolldownOptions.input', THEME.entry);
+    expect(build(8)).not.toHaveProperty('rollupOptions');
+    // 旧版 Vite 不认识 rolldownOptions，会静默丢掉 input 并崩在 index.html。
+    expect(build(7)).toHaveProperty('rollupOptions.input', THEME.entry);
+    expect(build(null)).toHaveProperty('rollupOptions.input', THEME.entry);
+    expect(buildSpecFor(THEME).build).toHaveProperty('rollupOptions.input', THEME.entry);
+  });
 });
 
 describe('applyBuildConfig：模式键', () => {

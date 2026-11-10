@@ -25,6 +25,21 @@ import { describeError, UserError } from './support/errors.ts';
 
 const NAME = 'vite-plugin-siyuan';
 
+/**
+ * 从插件上下文读宿主 Vite 主版本；读不到返回 null。
+ *
+ * 不 `import { version } from 'vite'`：vite 是 peer 依赖，会解析到本包自己那份副本，
+ * 在配置模块图里多载入一个 Vite 实例和它的 rolldown 原生 binding。之后任何钩子抛错
+ * 都会被 rolldown 降级成 `JavaScript Error / GenericFailure`，真实原因彻底丢失。
+ * `meta.viteVersion` 由宿主注入，Vite 8 起才有。
+ */
+function readViteMajor(meta: { viteVersion?: string } | undefined): number | null {
+  const version = meta?.viteVersion;
+  if (typeof version !== 'string') return null;
+  const major = Number.parseInt(version, 10);
+  return Number.isNaN(major) ? null : major;
+}
+
 export interface SiYuanOptions {
   /**
    * 构建入口，相对项目根。必填：主题要产出固定名 `theme.css`、插件要产出
@@ -79,7 +94,7 @@ export default function siyuan(options: SiYuanOptions): Plugin {
           port,
         });
       }
-      return applyBuildConfig(userConfig, { kind, watch, entry, installDir });
+      return applyBuildConfig(userConfig, { kind, watch, entry, installDir, viteMajor: readViteMajor(this.meta) });
     },
 
     configResolved(resolvedConfig: ResolvedConfig) {

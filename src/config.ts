@@ -4,7 +4,6 @@
  * 键分三类：契约键（改错了思源加载不了，插件固定）、口味键（用户优先）、
  * 模式键（watch / build 语义不同）。
  */
-import { version as viteVersion } from 'vite';
 import type { UserConfig } from 'vite';
 import { kindSpec } from './siyuan/kinds.ts';
 import type { Kind } from './siyuan/kinds.ts';
@@ -18,6 +17,15 @@ export interface BuildSpecInput {
   entry: string;
   /** watch 时的思源安装目录（绝对路径）；build 时为 null。 */
   installDir: string | null;
+  /**
+   * 宿主 Vite 的主版本号，取自插件上下文的 `meta.viteVersion`；缺省或取不到（Vite ≤7）按未知处理。
+   *
+   * 必须由调用方传入，不能在本包运行时 `import 'vite'` 取版本：vite 是 peer 依赖，
+   * 解析到的是本包自己的那份副本，会把第二个 Vite 实例连同它的 rolldown 原生
+   * binding 载入配置模块图。此后任何插件钩子抛错都会被 rolldown 降级成
+   * `JavaScript Error / GenericFailure`，真实原因彻底丢失。
+   */
+  viteMajor?: number | null;
 }
 
 const ASSET_DIR = 'assets';
@@ -37,16 +45,19 @@ function assetNamer(cssName: string) {
 }
 
 /** Vite ≥8 的等价键是 build.rolldownOptions；build.rollupOptions 作为已弃用别名仍可用。 */
-function defaultOptionsKey(): 'rollupOptions' | 'rolldownOptions' {
-  return Number.parseInt(viteVersion, 10) >= 8 ? 'rolldownOptions' : 'rollupOptions';
+function defaultOptionsKey(viteMajor: number | null | undefined): 'rollupOptions' | 'rolldownOptions' {
+  // 版本未知按 Vite ≤7 处理：旧版 Vite 完全不认识 rolldownOptions，写错会静默丢掉
+  // input 并崩在 "Cannot resolve entry module index.html"；而 rollupOptions 在
+  // Vite 8 上仍是 rolldownOptions 的等价别名（弃用警告只针对 optimizeDeps）。
+  return viteMajor !== null && viteMajor !== undefined && viteMajor >= 8 ? 'rolldownOptions' : 'rollupOptions';
 }
 
 /** 两个键不能同时出现（Vite 只会读其中一个）；用户写了哪个就沿用它。 */
-function optionsKey(userConfig: UserConfig): 'rollupOptions' | 'rolldownOptions' {
+function optionsKey(userConfig: UserConfig, viteMajor: number | null | undefined): 'rollupOptions' | 'rolldownOptions' {
   const build = userConfig.build;
   if (build && 'rollupOptions' in build) return 'rollupOptions';
   if (build && 'rolldownOptions' in build) return 'rolldownOptions';
-  return defaultOptionsKey();
+  return defaultOptionsKey(viteMajor);
 }
 
 /** 生成构建契约配置（不含用户值）。 */
@@ -78,7 +89,7 @@ export function buildSpecFor(input: BuildSpecInput): UserConfig {
     // "plugin xxx has no export"。
     build.lib = { entry: input.entry, fileName: 'index', cssFileName: 'index', formats: ['cjs'] };
   }
-  build[defaultOptionsKey()] = options;
+  build[defaultOptionsKey(input.viteMajor)] = options;
 
   return {
     // 思源从 /appearance/themes/<name>/ 提供主题；Vite 默认 base:'/' 会产出
@@ -95,7 +106,12 @@ export function buildSpecFor(input: BuildSpecInput): UserConfig {
  * 契约键校验：这些键改错了思源加载不了，而产物校验发现不了（文件名全对、
  * 文件也都在），所以在 config 阶段直接报错。
  */
-export function assertContractKeys(userConfig: UserConfig, kind: Kind, watch: boolean): void {
+export function assertContractKeys(
+  userConfig: UserConfig,
+  kind: Kind,
+  watch: boolean,
+  viteMajor: number | null | undefined
+): void {
   const base = userConfig.base;
   if (base !== undefined && !RELATIVE_BASES.has(base)) {
     throw new UserError(
@@ -125,7 +141,7 @@ export function assertContractKeys(userConfig: UserConfig, kind: Kind, watch: bo
     throw new UserError('build.ssr 不能开启：思源插件/主题是浏览器端产物，不是 SSR 构建。');
   }
 
-  const optionsKeyName = optionsKey(userConfig);
+  const optionsKeyName = optionsKey(userConfig, viteMajor);
   const options = build?.[optionsKeyName] as Record<string, unknown> | undefined;
   const output = options?.output as Record<string, unknown> | undefined;
   const entryFileNames = output?.entryFileNames;
@@ -251,7 +267,7 @@ function resolvePath(value: unknown): string {
  * `lib.formats` 例外：用户已写时不返回，否则 Vite 会拼成 `['cjs','cjs']`。
  */
 export function applyBuildConfig(userConfig: UserConfig, input: BuildSpecInput): UserConfig {
-  assertContractKeys(userConfig, input.kind, input.watch);
+  assertContractKeys(userConfig, input.kind, input.watch, input.viteMajor);
   const spec = buildSpecFor(input);
   const userBuild = (userConfig.build ?? {}) as Record<string, unknown>;
   const build = { ...(spec.build as Record<string, unknown>) };
