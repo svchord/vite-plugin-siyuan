@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/svchord/vite-plugin-siyuan/compare/v0.3.2...v0.4.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* watch 模式直写思源安装目录
+
+### Features
+
+* watch 模式直写思源安装目录 ([8e7e530](https://github.com/svchord/vite-plugin-siyuan/commit/8e7e53051098c5c55fe2fffe87623e706b41a6f8))
+
+
+### Bug Fixes
+
+* watch 下清理残留的旧产物 ([4a00824](https://github.com/svchord/vite-plugin-siyuan/commit/4a00824179c3096e9e73bc52d07b6389f03f900a))
+* 修正插件启用状态误判与首轮日志被产物信息截断 ([6db0024](https://github.com/svchord/vite-plugin-siyuan/commit/6db0024a9ca1f0d640b46df66e50e4e97f182f41))
+
 ## [0.3.2](https://github.com/svchord/vite-plugin-siyuan/compare/v0.3.1...v0.3.2) (2026-11-09)
 
 
